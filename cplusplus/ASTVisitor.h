@@ -64,7 +64,7 @@ public:
     void accept(AST *ast);
 
     template <typename _Tp>
-    void accept(List<_Tp> *it)
+    void accept(CPPList<_Tp> *it)
     {
         for (; it; it = it->next)
             accept(it->value);

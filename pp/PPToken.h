@@ -32,37 +32,38 @@
 
 #include <CPlusPlus.h>
 #include <Token.h>
+#include <assert.h>
 
-#include <QByteArray>
+#include <rct/String.h>
 
 namespace CPlusPlus {
 
-class CPLUSPLUS_EXPORT ByteArrayRef
+class CPLUSPLUS_EXPORT StringRef
 {
 public:
-    ByteArrayRef()
+    StringRef()
         : m_start("")
         , m_length(0)
     {}
 
-    ByteArrayRef(const QByteArray *ref)
+    StringRef(const String *ref)
         : m_start(ref->constData())
         , m_length(ref->length())
     {}
 
-    ByteArrayRef(const char *start, int length)
+    StringRef(const char *start, int length)
         : m_start(start)
         , m_length(length)
     {}
 
-    ByteArrayRef(const QByteArray *ref, int offset, int length)
+    StringRef(const String *ref, int offset, int length)
         : m_start(ref->constData() + offset)
         , m_length(length)
     {
-        Q_ASSERT(ref);
-        Q_ASSERT(offset >= 0);
-        Q_ASSERT(length >= 0);
-        Q_ASSERT(offset + length <= ref->size());
+        assert(ref);
+        assert(offset >= 0);
+        assert(length >= 0);
+        assert(offset + length <= ref->size());
     }
 
     inline const char *start() const
@@ -80,16 +81,16 @@ public:
     inline char operator[](int pos) const
     { return at(pos); }
 
-    QByteArray toByteArray() const
-    { return QByteArray(m_start, m_length); }
+    String toString() const
+    { return String(m_start, m_length); }
 
-    bool operator==(const QByteArray &other) const
-    { return m_length == other.length() && !qstrncmp(m_start, other.constData(), m_length); }
-    bool operator!=(const QByteArray &other) const
+    bool operator==(const String &other) const
+    { return m_length == other.length() && !strncmp(m_start, other.constData(), m_length); }
+    bool operator!=(const String &other) const
     { return !this->operator==(other); }
 
     bool operator==(const char *other) const
-    { return m_length == (int) qstrlen(other) && !qstrncmp(m_start, other, m_length); }
+    { return m_length == (int) strlen(other) && !strncmp(m_start, other, m_length); }
     bool operator!=(const char *other) const
     { return !this->operator==(other); }
 
@@ -102,10 +103,10 @@ private:
     const int m_length;
 };
 
-inline bool operator==(const QByteArray &other, const ByteArrayRef &ref)
+inline bool operator==(const String &other, const StringRef &ref)
 { return ref == other; }
 
-inline bool operator!=(const QByteArray &other, const ByteArrayRef &ref)
+inline bool operator!=(const String &other, const StringRef &ref)
 { return ref != other; }
 
 namespace Internal {
@@ -115,14 +116,14 @@ class CPLUSPLUS_EXPORT PPToken: public Token
 public:
     PPToken() {}
 
-    PPToken(const QByteArray &src)
+    PPToken(const String &src)
         : m_src(src)
     {}
 
-    void setSource(const QByteArray &src)
+    void setSource(const String &src)
     { m_src = src; }
 
-    const QByteArray &source() const
+    const String &source() const
     { return m_src; }
 
     bool hasSource() const
@@ -136,11 +137,11 @@ public:
     const char *tokenStart() const
     { return bufferStart() + offset; }
 
-    ByteArrayRef asByteArrayRef() const
-    { return ByteArrayRef(&m_src, offset, length()); }
+    StringRef asStringRef() const
+    { return StringRef(&m_src, offset, length()); }
 
 private:
-    QByteArray m_src;
+    String m_src;
 };
 
 } // namespace Internal

@@ -28,17 +28,17 @@
 namespace CPlusPlus {
 
 template <typename _Tp>
-class CPLUSPLUS_EXPORT List: public Managed
+class CPLUSPLUS_EXPORT CPPList: public Managed
 {
-    List(const List &other);
-    void operator =(const List &other);
+    CPPList(const CPPList &other);
+    void operator =(const CPPList &other);
 
 public:
-    List()
+    CPPList()
         : value(_Tp()), next(0)
     { }
 
-    List(const _Tp &value)
+    CPPList(const _Tp &value)
         : value(value), next(0)
     { }
 
@@ -66,7 +66,7 @@ public:
     {
         _Tp lastValue = 0;
 
-        for (const List *it = this; it; it = it->next) {
+        for (const CPPList *it = this; it; it = it->next) {
             if (it->value)
                 lastValue = it->value;
         }
@@ -75,7 +75,7 @@ public:
     }
 
     _Tp value;
-    List *next;
+    CPPList *next;
 };
 
 class CPLUSPLUS_EXPORT AST: public Managed
@@ -93,7 +93,7 @@ public:
     { if (ast) ast->accept(visitor); }
 
     template <typename _Tp>
-    static void accept(List<_Tp> *it, ASTVisitor *visitor)
+    static void accept(CPPList<_Tp> *it, ASTVisitor *visitor)
     {
         for (; it; it = it->next)
             accept(it->value, visitor);
@@ -103,7 +103,7 @@ public:
     bool match(AST *pattern, ASTMatcher *matcher);
 
     template <typename _Tp>
-    static bool match(List<_Tp> *it, List<_Tp> *patternIt, ASTMatcher *matcher)
+    static bool match(CPPList<_Tp> *it, CPPList<_Tp> *patternIt, ASTMatcher *matcher)
     {
         while (it && patternIt) {
             if (! match(it->value, patternIt->value, matcher))
@@ -616,7 +616,7 @@ public:
     unsigned semicolon_token;
 
 public:
-    List<Symbol *> *symbols;
+    CPPList<Symbol *> *symbols;
 
 public:
     SimpleDeclarationAST()
@@ -2451,7 +2451,7 @@ public:
         , rparen_token(0)
     {}
 
-    virtual ExpressionListParenAST *asExpressionListParen() { return this; }
+    virtual ExpressionListParenAST *asExpressionCPPListParen() { return this; }
 
     virtual unsigned firstToken() const;
     virtual unsigned lastToken() const;
@@ -3635,7 +3635,7 @@ public:
     unsigned semicolon_token;
 
 public: // annotations
-    List<ObjCForwardClassDeclaration *> *symbols;
+    CPPList<ObjCForwardClassDeclaration *> *symbols;
 
 public:
     ObjCClassForwardDeclarationAST()
@@ -3717,7 +3717,7 @@ public:
     unsigned semicolon_token;
 
 public: // annotations
-    List<ObjCForwardProtocolDeclaration *> *symbols;
+    CPPList<ObjCForwardProtocolDeclaration *> *symbols;
 
 public:
     ObjCProtocolForwardDeclarationAST()
@@ -4047,7 +4047,7 @@ public:
     DeclarationAST *simple_declaration;
 
 public: // annotations
-    List<ObjCPropertyDeclaration *> *symbols;
+    CPPList<ObjCPropertyDeclaration *> *symbols;
 
 public:
     ObjCPropertyDeclarationAST()

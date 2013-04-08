@@ -55,11 +55,11 @@
 #include <Literals.h>
 #include <cctype>
 
-#include <QDebug>
-#include <QList>
-#include <QDate>
-#include <QTime>
-#include <QPair>
+#include <rct/Log.h>
+#include <rct/List.h>
+// #include <QDate>
+// #include <QTime>
+#include <utility>
 
 #include <list>
 #include <algorithm>
@@ -219,7 +219,7 @@ inline bool isContinuationToken(const PPToken &tk)
     return tk.isNot(T_EOF_SYMBOL) && (! tk.newline() || tk.joined());
 }
 
-Macro *macroDefinition(const ByteArrayRef &name,
+Macro *macroDefinition(const StringRef &name,
                        unsigned offset,
                        unsigned line,
                        Environment *env,
@@ -295,7 +295,7 @@ public:
     { }
 
     Value operator()(const Token *firstToken, const Token *lastToken,
-                     const QByteArray &source)
+                     const String &source)
     {
         this->source = source;
         const Value previousValue = switchValue(Value());
@@ -319,7 +319,7 @@ protected:
     {
         if ((*_lex)->isNot(T_IDENTIFIER))
             return false;
-        const ByteArrayRef spell = tokenSpell();
+        const StringRef spell = tokenSpell();
         if (spell.size() != 7)
             return false;
         return spell == "defined";
@@ -335,9 +335,9 @@ protected:
         return (*_lex)->f.length;
     }
 
-    ByteArrayRef tokenSpell() const
+    StringRef tokenSpell() const
     {
-        return ByteArrayRef(tokenPosition(), tokenLength());
+        return StringRef(tokenPosition(), tokenLength());
     }
 
     inline void process_expression()
@@ -535,7 +535,7 @@ private:
 private:
     Client *client;
     Environment *env;
-    QByteArray source;
+    String source;
     RangeLexer *_lex;
     Value _value;
 };
@@ -544,8 +544,8 @@ private:
 
 Preprocessor::State::State()
     : m_lexer(0)
-    , m_skipping(MAX_LEVEL)
-    , m_trueTest(MAX_LEVEL)
+    , m_skipping(MAX_LEVEL, true)
+    , m_trueTest(MAX_LEVEL, true)
     , m_ifLevel(0)
     , m_tokenBufferDepth(0)
     , m_tokenBuffer(0)
@@ -598,7 +598,7 @@ void Preprocessor::State::popTokenBuffer()
 }
 
 #ifdef DEBUG_INCLUDE_GUARD_TRACKING
-QString Preprocessor::State::guardStateToString(int guardState)
+String Preprocessor::State::guardStateToString(int guardState)
 {
     switch (guardState) {
     case IncludeGuardState_NoGuard: return QLatin1String("NoGuard");
@@ -640,7 +640,7 @@ void Preprocessor::State::updateIncludeGuardState_helper(IncludeGuardStateHint h
 {
 #ifdef DEBUG_INCLUDE_GUARD_TRACKING
     int oldIncludeGuardState = m_includeGuardState;
-    QByteArray oldIncludeGuardMacroName = m_includeGuardMacroName;
+    String oldIncludeGuardMacroName = m_includeGuardMacroName;
 #endif // DEBUG_INCLUDE_GUARD_TRACKING
 
     switch (m_includeGuardState) {
@@ -649,7 +649,7 @@ void Preprocessor::State::updateIncludeGuardState_helper(IncludeGuardStateHint h
     case IncludeGuardState_BeforeIfndef:
         if (hint == IncludeGuardStateHint_Ifndef
                 && idToken && idToken->is(T_IDENTIFIER)) {
-            m_includeGuardMacroName = idToken->asByteArrayRef().toByteArray();
+            m_includeGuardMacroName = idToken->asStringRef().toString();
             m_includeGuardState = IncludeGuardState_AfterIfndef;
         } else {
             m_includeGuardState = IncludeGuardState_NoGuard;
@@ -658,7 +658,7 @@ void Preprocessor::State::updateIncludeGuardState_helper(IncludeGuardStateHint h
     case IncludeGuardState_AfterIfndef:
         if (hint == IncludeGuardStateHint_Define
                 && idToken && idToken->is(T_IDENTIFIER)
-                && idToken->asByteArrayRef() == m_includeGuardMacroName)
+                && idToken->asStringRef() == m_includeGuardMacroName)
             m_includeGuardState = IncludeGuardState_AfterDefine;
         break;
     case IncludeGuardState_AfterDefine:
@@ -672,14 +672,14 @@ void Preprocessor::State::updateIncludeGuardState_helper(IncludeGuardStateHint h
     }
 
 #ifdef DEBUG_INCLUDE_GUARD_TRACKING
-    qDebug() << "***" << guardStateToString(oldIncludeGuardState)
+    error() << "***" << guardStateToString(oldIncludeGuardState)
              << "->" << guardStateToString(m_includeGuardState)
              << "hint:" << hint
              << "guard:" << oldIncludeGuardMacroName << "->" << m_includeGuardMacroName;
 #endif // DEBUG_INCLUDE_GUARD_TRACKING
 }
 
-const QString Preprocessor::configurationFileName = QLatin1String("<configuration>");
+const String Preprocessor::configurationFileName = "<configuration>";
 
 Preprocessor::Preprocessor(Client *client, Environment *env)
     : m_client(client)
@@ -689,19 +689,14 @@ Preprocessor::Preprocessor(Client *client, Environment *env)
 {
 }
 
-QByteArray Preprocessor::run(const QString &fileName, const QString &source)
-{
-    return run(fileName, source.toLatin1());
-}
-
-QByteArray Preprocessor::run(const QString &fileName,
-                             const QByteArray &source,
+String Preprocessor::run(const String &fileName,
+                             const String &source,
                              bool noLines,
                              bool markGeneratedTokens)
 {
     m_scratchBuffer.clear();
 
-    QByteArray preprocessed, includeGuardMacroName;
+    String preprocessed, includeGuardMacroName;
     preprocess(fileName, source, &preprocessed, &includeGuardMacroName, noLines,
                markGeneratedTokens, false);
     if (!includeGuardMacroName.isEmpty())
@@ -732,10 +727,10 @@ void Preprocessor::setKeepComments(bool keepComments)
 void Preprocessor::generateOutputLineMarker(unsigned lineno)
 {
     maybeStartOutputLine();
-    QByteArray marker;
+    String marker;
     marker.reserve(64);
     marker.append("# ");
-    marker.append(QByteArray::number(lineno));
+    marker.append(String::number(lineno));
     marker.append(" \"");
     marker.append(m_env->currentFileUtf8);
     marker.append("\"\n");
@@ -771,8 +766,8 @@ void Preprocessor::handleDefined(PPToken *tk)
 
     pushToken(tk);
 
-    QByteArray result(1, '0');
-    if (m_env->resolve(idToken.asByteArrayRef()))
+    String result(1, '0');
+    if (m_env->resolve(idToken.asStringRef()))
         result[0] = '1';
     *tk = generateToken(T_NUMERIC_LITERAL, result.constData(), result.size(), lineno, false);
 }
@@ -821,9 +816,9 @@ _Lclassify:
                 lex(tk);
             } while (isContinuationToken(*tk));
             goto _Lclassify;
-        } else if (tk->is(T_IDENTIFIER) && !isQtReservedWord(tk->asByteArrayRef())) {
+        } else if (tk->is(T_IDENTIFIER) && !isQtReservedWord(tk->asStringRef())) {
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_OtherToken);
-            if (m_state.m_inCondition && tk->asByteArrayRef() == "defined") {
+            if (m_state.m_inCondition && tk->asStringRef() == "defined") {
                 handleDefined(tk);
             } else {
                 synchronizeOutputLines(*tk);
@@ -849,36 +844,38 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
 {
     ScopedBoolSwap s(m_state.m_inPreprocessorDirective, true);
 
-    static const QByteArray ppLine("__LINE__");
-    static const QByteArray ppFile("__FILE__");
-    static const QByteArray ppDate("__DATE__");
-    static const QByteArray ppTime("__TIME__");
+    static const String ppLine("__LINE__");
+    static const String ppFile("__FILE__");
+    static const String ppDate("__DATE__");
+    static const String ppTime("__TIME__");
 
-    ByteArrayRef macroNameRef = tk->asByteArrayRef();
+    StringRef macroNameRef = tk->asStringRef();
 
     if (macroNameRef.size() == 8
             && macroNameRef[0] == '_'
             && macroNameRef[1] == '_') {
         PPToken newTk;
         if (macroNameRef == ppLine) {
-            QByteArray txt = QByteArray::number(tk->lineno);
+            String txt = String::number(tk->lineno);
             newTk = generateToken(T_STRING_LITERAL, txt.constData(), txt.size(), tk->lineno, false);
         } else if (macroNameRef == ppFile) {
-            QByteArray txt;
+            String txt;
             txt.append('"');
             txt.append(m_env->currentFileUtf8);
             txt.append('"');
             newTk = generateToken(T_STRING_LITERAL, txt.constData(), txt.size(), tk->lineno, false);
         } else if (macroNameRef == ppDate) {
-            QByteArray txt;
+            String txt;
             txt.append('"');
-            txt.append(QDate::currentDate().toString().toUtf8());
+#warning not done
+            // txt.append(QDate::currentDate().toString().toUtf8());
             txt.append('"');
             newTk = generateToken(T_STRING_LITERAL, txt.constData(), txt.size(), tk->lineno, false);
         } else if (macroNameRef == ppTime) {
-            QByteArray txt;
+            String txt;
             txt.append('"');
-            txt.append(QTime::currentTime().toString().toUtf8());
+#warning not done
+            // txt.append(QTime::currentTime().toString().toUtf8());
             txt.append('"');
             newTk = generateToken(T_STRING_LITERAL, txt.constData(), txt.size(), tk->lineno, false);
         }
@@ -898,7 +895,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
                 && m_state.m_tokenBuffer->isBlocked(macro))) {
         return false;
     }
-//    qDebug() << "expanding" << macro->name() << "on line" << tk->lineno;
+//    error() << "expanding" << macro->name() << "on line" << tk->lineno;
 
     // Keep track the of the macro identifier token.
     PPToken idTk = *tk;
@@ -909,7 +906,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
     // a "reference" line initialize set to the line where expansion happens.
     unsigned baseLine = idTk.lineno;
 
-    QVector<PPToken> body = macro->definitionTokens();
+    List<PPToken> body = macro->definitionTokens();
 
     // Withing nested expansion we might reach a previously added marker token. In this case,
     // we need to move it from its current possition to outside the nesting.
@@ -926,7 +923,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
         }
 
         // Collect individual tokens that form the macro arguments.
-        QVector<QVector<PPToken> > allArgTks;
+        List<List<PPToken> > allArgTks;
         bool hasArgs = collectActualArguments(tk, &allArgTks);
 
         // Check whether collecting arguments failed due to a previously added marker
@@ -969,9 +966,9 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
             // Bundle each token sequence into a macro argument "reference" for notification.
             // Even empty ones, which are not necessarily important on its own, but for the matter
             // of couting their number - such as in foo(,)
-            QVector<MacroArgumentReference> argRefs;
+            List<MacroArgumentReference> argRefs;
             for (int i = 0; i < allArgTks.size(); ++i) {
-                const QVector<PPToken> &argTks = allArgTks.at(i);
+                const List<PPToken> &argTks = allArgTks.at(i);
                 if (argTks.isEmpty()) {
                     argRefs.push_back(MacroArgumentReference());
                 } else {
@@ -1005,7 +1002,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
             // This is not the most beautiful approach but it's quite reasonable. What we do here
             // is to create a fake identifier token which is only composed by whitespaces. It's
             // also not marked as expanded so it it can be treated as a regular token.
-            QByteArray content(idTk.f.length + computeDistance(idTk), ' ');
+            String content(idTk.f.length + computeDistance(idTk), ' ');
             PPToken fakeIdentifier = generateToken(T_IDENTIFIER,
                                                    content.constData(), content.length(),
                                                    idTk.lineno, false, false);
@@ -1052,7 +1049,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
         }
     }
 
-    m_state.pushTokenBuffer(body.begin(), body.end(), macro);
+    m_state.pushTokenBuffer(body.data(), body.data() + body.size(), macro);
 
     if (m_client && !idTk.generated())
         m_client->stopExpandingMacro(idTk.offset, *macro);
@@ -1062,11 +1059,11 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
 
 bool Preprocessor::handleFunctionLikeMacro(PPToken *tk,
                                            const Macro *macro,
-                                           QVector<PPToken> &body,
-                                           const QVector<QVector<PPToken> > &actuals,
+                                           List<PPToken> &body,
+                                           const List<List<PPToken> > &actuals,
                                            unsigned baseLine)
 {
-    QVector<PPToken> expanded;
+    List<PPToken> expanded;
     expanded.reserve(MAX_TOKEN_EXPANSION_COUNT);
 
     const size_t bodySize = body.size();
@@ -1076,12 +1073,12 @@ bool Preprocessor::handleFunctionLikeMacro(PPToken *tk,
         PPToken bodyTk = body.at(i);
 
         if (bodyTk.is(T_IDENTIFIER)) {
-            const ByteArrayRef id = bodyTk.asByteArrayRef();
-            const QVector<QByteArray> &formals = macro->formals();
+            const StringRef id = bodyTk.asStringRef();
+            const List<String> &formals = macro->formals();
             int j = 0;
             for (; j < formals.size() && expanded.size() < MAX_TOKEN_EXPANSION_COUNT; ++j) {
                 if (formals[j] == id) {
-                    QVector<PPToken> actualsForThisParam = actuals.at(j);
+                    List<PPToken> actualsForThisParam = actuals.at(j);
                     unsigned lineno = baseLine;
 
                     // Collect variadic arguments
@@ -1095,7 +1092,7 @@ bool Preprocessor::handleFunctionLikeMacro(PPToken *tk,
                     const int actualsSize = actualsForThisParam.size();
 
                     if (i > 0 && body[i - 1].is(T_POUND)) {
-                        QByteArray enclosedString;
+                        String enclosedString;
                         enclosedString.reserve(256);
 
                         for (int i = 0; i < actualsSize; ++i) {
@@ -1153,13 +1150,13 @@ bool Preprocessor::handleFunctionLikeMacro(PPToken *tk,
             const PPToken &leftTk = expanded[expandedSize - 1];
             const PPToken &rightTk = expanded[expandedSize];
             expanded[expandedSize - 1] = generateConcatenated(leftTk, rightTk);
-            expanded.remove(expandedSize);
+            expanded.removeAt(expandedSize);
         }
     }
 
     // The "new" body.
     body = expanded;
-    body.squeeze();
+    // body.squeeze();
 
     // Next token to be lexed after the expansion.
     pushToken(tk);
@@ -1201,7 +1198,7 @@ void Preprocessor::trackExpansionCycles(PPToken *tk)
             } else if (m_state.m_expansionStatus == Expanding) {
                 m_state.m_expansionStatus = JustFinishedExpansion;
 
-                QByteArray *buffer = currentOutputBuffer();
+                String *buffer = currentOutputBuffer();
                 if (!buffer)
                     return;
 
@@ -1209,27 +1206,27 @@ void Preprocessor::trackExpansionCycles(PPToken *tk)
 
                 // Offset and length of the macro invocation
                 char chunk[40];
-                qsnprintf(chunk, sizeof(chunk), "# expansion begin %d,%d", tk->offset, tk->length());
+                snprintf(chunk, sizeof(chunk), "# expansion begin %d,%d", tk->offset, tk->length());
                 buffer->append(chunk);
 
                 // Expanded tokens
                 unsigned generatedCount = 0;
                 for (int i = 0; i < m_state.m_expandedTokensInfo.size(); ++i) {
-                    const QPair<unsigned, unsigned> &p = m_state.m_expandedTokensInfo.at(i);
+                    const std::pair<unsigned, unsigned> &p = m_state.m_expandedTokensInfo.at(i);
                     if (p.first) {
                         if (generatedCount) {
-                            qsnprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
+                            snprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
                             buffer->append(chunk);
                             generatedCount = 0;
                         }
-                        qsnprintf(chunk, sizeof(chunk), " %d:%d", p.first, p.second);
+                        snprintf(chunk, sizeof(chunk), " %d:%d", p.first, p.second);
                         buffer->append(chunk);
                     } else {
                         ++generatedCount;
                     }
                 }
                 if (generatedCount) {
-                    qsnprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
+                    snprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
                     buffer->append(chunk);
                 }
                 buffer->append('\n');
@@ -1249,7 +1246,7 @@ void Preprocessor::trackExpansionCycles(PPToken *tk)
 static void adjustForCommentOrStringNewlines(unsigned *currentLine, const PPToken &tk)
 {
     if (tk.is(T_COMMENT) || tk.is(T_DOXY_COMMENT) || tk.isStringLiteral())
-        (*currentLine) += tk.asByteArrayRef().count('\n');
+        (*currentLine) += tk.asStringRef().count('\n');
 }
 
 void Preprocessor::synchronizeOutputLines(const PPToken &tk, bool forceLine)
@@ -1278,7 +1275,7 @@ void Preprocessor::synchronizeOutputLines(const PPToken &tk, bool forceLine)
 
 void Preprocessor::removeTrailingOutputLines()
 {
-    QByteArray *buffer = currentOutputBuffer();
+    String *buffer = currentOutputBuffer();
     if (buffer) {
         int i = buffer->size() - 1;
         while (i >= 0 && buffer->at(i) == '\n')
@@ -1332,8 +1329,8 @@ void Preprocessor::enforceSpacing(const Preprocessor::PPToken &tk, bool forceSpa
 }
 
 /// invalid pp-tokens are used as markers to force whitespace checks.
-void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
-                              QByteArray *result, QByteArray *includeGuardMacroName,
+void Preprocessor::preprocess(const String &fileName, const String &source,
+                              String *result, String *includeGuardMacroName,
                               bool noLines,
                               bool markGeneratedTokens, bool inCondition,
                               unsigned offsetRef, unsigned lineRef)
@@ -1344,7 +1341,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
     ScopedSwap<State> savedState(m_state, State());
     m_state.m_currentFileName = fileName;
     m_state.m_source = source;
-    m_state.m_lexer = new Lexer(source.constBegin(), source.constEnd());
+    m_state.m_lexer = new Lexer(source.constData(), source.constData() + source.size());
     m_state.m_lexer->setScanKeywords(false);
     m_state.m_lexer->setScanAngleStringLiteralTokens(false);
     if (m_keepComments)
@@ -1356,8 +1353,8 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
     m_state.m_offsetRef = offsetRef;
     m_state.m_lineRef = lineRef;
 
-    ScopedSwap<QString> savedFileName(m_env->currentFile, fileName);
-    ScopedSwap<QByteArray> savedUtf8FileName(m_env->currentFileUtf8, fileName.toUtf8());
+    ScopedSwap<String> savedFileName(m_env->currentFile, fileName);
+    ScopedSwap<String> savedUtf8FileName(m_env->currentFileUtf8, fileName);
     ScopedSwap<unsigned> savedCurrentLine(m_env->currentLine, 1);
 
     if (!m_state.m_noLines)
@@ -1381,7 +1378,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
                 trackedLine = tk.lineno;
                 trackedColumn = computeDistance(tk, true);
             }
-            m_state.m_expandedTokensInfo.append(qMakePair(trackedLine, trackedColumn));
+            m_state.m_expandedTokensInfo.append(std::make_pair(trackedLine, trackedColumn));
         } else if (m_state.m_expansionStatus == JustFinishedExpansion) {
             m_state.m_expansionStatus = NotExpanding;
             macroExpanded = true;
@@ -1394,7 +1391,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
         enforceSpacing(tk, macroExpanded);
 
         // Finally output the token.
-        writeOutput(tk.asByteArrayRef());
+        writeOutput(tk.asStringRef());
     } while (tk.isNot(T_EOF_SYMBOL));
 
     removeTrailingOutputLines();
@@ -1409,10 +1406,10 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
         m_state.popTokenBuffer();
 }
 
-bool Preprocessor::collectActualArguments(PPToken *tk, QVector<QVector<PPToken> > *actuals)
+bool Preprocessor::collectActualArguments(PPToken *tk, List<List<PPToken> > *actuals)
 {
-    Q_ASSERT(tk);
-    Q_ASSERT(actuals);
+    assert(tk);
+    assert(actuals);
 
     lex(tk); // consume the identifier
 
@@ -1427,7 +1424,7 @@ bool Preprocessor::collectActualArguments(PPToken *tk, QVector<QVector<PPToken> 
         //### TODO: error message
         return false;
 
-    QVector<PPToken> tokens;
+    List<PPToken> tokens;
     lex(tk);
     scanActualArgument(tk, &tokens);
 
@@ -1436,7 +1433,7 @@ bool Preprocessor::collectActualArguments(PPToken *tk, QVector<QVector<PPToken> 
     while (tk->is(T_COMMA)) {
         lex(tk);
 
-        QVector<PPToken> tokens;
+        List<PPToken> tokens;
         scanActualArgument(tk, &tokens);
         actuals->append(tokens);
     }
@@ -1447,9 +1444,9 @@ bool Preprocessor::collectActualArguments(PPToken *tk, QVector<QVector<PPToken> 
     return true;
 }
 
-void Preprocessor::scanActualArgument(PPToken *tk, QVector<PPToken> *tokens)
+void Preprocessor::scanActualArgument(PPToken *tk, List<PPToken> *tokens)
 {
-    Q_ASSERT(tokens);
+    assert(tokens);
 
     int count = 0;
 
@@ -1470,8 +1467,9 @@ void Preprocessor::scanActualArgument(PPToken *tk, QVector<PPToken> *tokens)
             // expansion. We stick with GCC's approach which is to replace them by C style
             // comments (currently clang just gets rid of them) and transform internals */
             // into *|.
-            QByteArray text = m_state.m_source.mid(tk->begin() + 2, tk->end() - tk->begin() - 2);
-            const QByteArray &comment = "/*" + text.replace("*/", "*|") + "*/";
+            String text = m_state.m_source.mid(tk->begin() + 2, tk->end() - tk->begin() - 2);
+            text.replace("*/", "*|");
+            const String &comment = "/*" + text + "*/";
             tokens->append(generateToken(T_COMMENT,
                                          comment.constData(), comment.size(),
                                          tk->lineno, false));
@@ -1493,24 +1491,24 @@ void Preprocessor::handlePreprocessorDirective(PPToken *tk)
     if (tk->newline() && ! tk->joined())
         return; // nothing to do.
 
-    static const QByteArray ppDefine("define");
-    static const QByteArray ppIf("if");
-    static const QByteArray ppIfDef("ifdef");
-    static const QByteArray ppIfNDef("ifndef");
-    static const QByteArray ppEndIf("endif");
-    static const QByteArray ppElse("else");
-    static const QByteArray ppUndef("undef");
-    static const QByteArray ppElif("elif");
-    static const QByteArray ppInclude("include");
-    static const QByteArray ppIncludeNext("include_next");
-    static const QByteArray ppImport("import");
+    static const String ppDefine("define");
+    static const String ppIf("if");
+    static const String ppIfDef("ifdef");
+    static const String ppIfNDef("ifndef");
+    static const String ppEndIf("endif");
+    static const String ppElse("else");
+    static const String ppUndef("undef");
+    static const String ppElif("elif");
+    static const String ppInclude("include");
+    static const String ppIncludeNext("include_next");
+    static const String ppImport("import");
     //### TODO:
     // line
     // error
     // pragma
 
     if (tk->is(T_IDENTIFIER)) {
-        const ByteArrayRef directive = tk->asByteArrayRef();
+        const StringRef directive = tk->asStringRef();
 
         if (!skipping() && directive == ppDefine) {
             handleDefineDirective(tk);
@@ -1549,10 +1547,10 @@ void Preprocessor::handleIncludeDirective(PPToken *tk, bool includeNext)
     lex(tk); // consume "include" token
     m_state.m_lexer->setScanAngleStringLiteralTokens(false);
     const unsigned line = tk->lineno;
-    QByteArray included;
+    String included;
 
     if (tk->is(T_STRING_LITERAL) || tk->is(T_ANGLE_STRING_LITERAL)) {
-        included = tk->asByteArrayRef().toByteArray();
+        included = tk->asStringRef().toString();
         lex(tk); // consume string token
     } else {
         included = expand(tk);
@@ -1564,7 +1562,7 @@ void Preprocessor::handleIncludeDirective(PPToken *tk, bool includeNext)
         return;
     }
 
-//    qDebug("include [[%s]]", included.toUtf8().constData());
+//    error("include [[%s]]", included.toUtf8().constData());
     Client::IncludeType mode;
     if (includeNext)
         mode = Client::IncludeNext;
@@ -1576,7 +1574,7 @@ void Preprocessor::handleIncludeDirective(PPToken *tk, bool includeNext)
         return; //### TODO: add error message?
 
     if (m_client) {
-        QString inc = QString::fromUtf8(included.constData() + 1, included.size() - 2);
+        String inc = included.mid(1, included.size() - 2);
         m_client->sourceNeeded(line, inc, mode);
     }
 }
@@ -1592,7 +1590,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
     Macro macro;
     macro.setFileName(m_env->currentFile);
     macro.setLine(tk->lineno);
-    QByteArray macroName = tk->asByteArrayRef().toByteArray();
+    String macroName = tk->asStringRef().toString();
     macro.setName(macroName);
     macro.setOffset(tk->offset);
 
@@ -1608,7 +1606,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
         bool hasIdentifier = false;
         if (isContinuationToken(*tk) && tk->is(T_IDENTIFIER)) {
             hasIdentifier = true;
-            macro.addFormal(tk->asByteArrayRef().toByteArray());
+            macro.addFormal(tk->asStringRef().toString());
 
             lex(tk);
 
@@ -1616,7 +1614,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
                 lex(tk);
 
                 if (isContinuationToken(*tk) && tk->is(T_IDENTIFIER)) {
-                    macro.addFormal(tk->asByteArrayRef().toByteArray());
+                    macro.addFormal(tk->asStringRef().toString());
                     lex(tk);
                 } else {
                     hasIdentifier = false;
@@ -1637,7 +1635,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_Define, &idToken);
     }
 
-    QVector<PPToken> bodyTokens;
+    List<PPToken> bodyTokens;
     unsigned previousOffset = 0;
     unsigned previousLine = 0;
     Macro *macroReference = 0;
@@ -1652,7 +1650,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
         // Identifiers must not be eagerly expanded inside defines, but we should still notify
         // in the case they are macros.
         if (tk->is(T_IDENTIFIER) && m_client) {
-            macroReference = m_env->resolve(tk->asByteArrayRef());
+            macroReference = m_env->resolve(tk->asStringRef());
             if (macroReference) {
                 if (!macroReference->isFunctionLike()) {
                     m_client->notifyMacroReference(tk->offset, tk->lineno, *macroReference);
@@ -1675,13 +1673,15 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
         lex(tk);
     }
 
-    if (isQtReservedWord(ByteArrayRef(&macroName))) {
-        QByteArray macroId = macro.name();
+    if (isQtReservedWord(StringRef(&macroName))) {
+        String macroId = macro.name();
 
         if (macro.isFunctionLike()) {
             macroId += '(';
             bool fst = true;
-            foreach (const QByteArray &formal, macro.formals()) {
+            const int count = macro.formals().size();
+            for (int i=0; i<count; ++i) {
+                const String &formal = macro.formals().at(i);
                 if (! fst)
                     macroId += ", ";
                 fst = false;
@@ -1696,7 +1696,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
         PPToken &firstBodyToken = bodyTokens[0];
         int start = firstBodyToken.offset;
         int len = tk->offset - start;
-        QByteArray bodyText = firstBodyToken.source().mid(start, len).trimmed();
+        String bodyText = firstBodyToken.source().mid(start, len).trimmed();
 
         const int bodySize = bodyTokens.size();
         for (int i = 0; i < bodySize; ++i) {
@@ -1710,13 +1710,13 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
     macro.setLength(tk->offset - defineOffset);
     m_env->bind(macro);
 
-//    qDebug() << "adding macro" << macro.name() << "defined at" << macro.fileName() << ":"<<macro.line();
+//    error() << "adding macro" << macro.name() << "defined at" << macro.fileName() << ":"<<macro.line();
 
     if (m_client)
         m_client->macroAdded(macro);
 }
 
-QByteArray Preprocessor::expand(PPToken *tk, PPToken *lastConditionToken)
+String Preprocessor::expand(PPToken *tk, PPToken *lastConditionToken)
 {
     unsigned line = tk->lineno;
     unsigned begin = tk->begin();
@@ -1726,14 +1726,14 @@ QByteArray Preprocessor::expand(PPToken *tk, PPToken *lastConditionToken)
         lex(tk);
     }
     // Gather the exact spelling of the content in the source.
-    QByteArray condition(m_state.m_source.mid(begin, lastTk.begin() + lastTk.length() - begin));
+    String condition(m_state.m_source.mid(begin, lastTk.begin() + lastTk.length() - begin));
 
-//    qDebug("*** Condition before: [%s]", condition.constData());
-    QByteArray result;
+//    error("*** Condition before: [%s]", condition.constData());
+    String result;
     result.reserve(256);
     preprocess(m_state.m_currentFileName, condition, &result, 0, true, false, true, begin, line);
-    result.squeeze();
-//    qDebug("*** Condition after: [%s]", result.constData());
+    // result.squeeze();
+//    error("*** Condition after: [%s]", result.constData());
 
     if (lastConditionToken)
         *lastConditionToken = lastTk;
@@ -1744,7 +1744,7 @@ QByteArray Preprocessor::expand(PPToken *tk, PPToken *lastConditionToken)
 const PPToken Preprocessor::evalExpression(PPToken *tk, Value &result)
 {
     PPToken lastConditionToken;
-    const QByteArray expanded = expand(tk, &lastConditionToken);
+    const String expanded = expand(tk, &lastConditionToken);
     Lexer lexer(expanded.constData(), expanded.constData() + expanded.size());
     std::vector<Token> buf;
     Token t;
@@ -1862,7 +1862,7 @@ void Preprocessor::handleEndIfDirective(PPToken *tk, const PPToken &poundToken)
 
 void Preprocessor::handleIfDefDirective(bool checkUndefined, PPToken *tk)
 {
-    static const QByteArray qCreatorRun("Q_CREATOR_RUN");
+    static const String qCreatorRun("Q_CREATOR_RUN");
 
     lex(tk); // consume "ifdef" token
     if (tk->is(T_IDENTIFIER)) {
@@ -1870,7 +1870,7 @@ void Preprocessor::handleIfDefDirective(bool checkUndefined, PPToken *tk)
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_Ifndef, tk);
 
         bool value = false;
-        const ByteArrayRef macroName = tk->asByteArrayRef();
+        const StringRef macroName = tk->asStringRef();
         if (Macro *macro = macroDefinition(macroName, tk->offset, tk->lineno, m_env, m_client)) {
             value = true;
 
@@ -1912,7 +1912,7 @@ void Preprocessor::handleUndefDirective(PPToken *tk)
 {
     lex(tk); // consume "undef" token
     if (tk->is(T_IDENTIFIER)) {
-        const ByteArrayRef macroName = tk->asByteArrayRef();
+        const StringRef macroName = tk->asStringRef();
         const Macro *macro = m_env->remove(macroName);
 
         if (m_client && macro)
@@ -1926,7 +1926,7 @@ void Preprocessor::handleUndefDirective(PPToken *tk)
 #endif // NO_DEBUG
 }
 
-bool Preprocessor::isQtReservedWord(const ByteArrayRef &macroId)
+bool Preprocessor::isQtReservedWord(const StringRef &macroId)
 {
     const int size = macroId.size();
     if      (size == 9 && macroId.at(0) == 'Q' && macroId == "Q_SIGNALS")
@@ -2016,7 +2016,7 @@ PPToken Preprocessor::generateToken(enum Kind kind,
 
 PPToken Preprocessor::generateConcatenated(const PPToken &leftTk, const PPToken &rightTk)
 {
-    QByteArray newText;
+    String newText;
     newText.reserve(leftTk.length() + rightTk.length());
     newText.append(leftTk.tokenStart(), leftTk.length());
     newText.append(rightTk.tokenStart(), rightTk.length());
@@ -2031,7 +2031,7 @@ void Preprocessor::startSkippingBlocks(const Preprocessor::PPToken &tk) const
         return;
 
     int iter = tk.end();
-    const QByteArray &txt = tk.source();
+    const String &txt = tk.source();
     for (; iter < txt.size(); ++iter) {
         if (txt.at(iter) == '\n') {
             m_client->startSkippingBlocks(iter + 1);
@@ -2043,32 +2043,32 @@ void Preprocessor::startSkippingBlocks(const Preprocessor::PPToken &tk) const
 template <class T>
 void Preprocessor::writeOutput(const T &t)
 {
-    QByteArray *buffer = currentOutputBuffer();
+    String *buffer = currentOutputBuffer();
     if (buffer)
         buffer->append(t);
 }
 
-void Preprocessor::writeOutput(const ByteArrayRef &ref)
+void Preprocessor::writeOutput(const StringRef &ref)
 {
-    QByteArray *buffer = currentOutputBuffer();
+    String *buffer = currentOutputBuffer();
     if (buffer)
         buffer->append(ref.start(), ref.length());
 }
 
 bool Preprocessor::atStartOfOutputLine() const
 {
-    const QByteArray *buffer = currentOutputBuffer();
-    return (buffer && !buffer->isEmpty()) ? *(buffer->end() - 1) == '\n' : true;
+    const String *buffer = currentOutputBuffer();
+    return (buffer && !buffer->isEmpty()) ? buffer->at(buffer->size() - 1) == '\n' : true;
 }
 
 void Preprocessor::maybeStartOutputLine()
 {
-    QByteArray *buffer = currentOutputBuffer();
-    if (buffer && !buffer->isEmpty() && *(buffer->end() - 1) != '\n')
+    String *buffer = currentOutputBuffer();
+    if (buffer && !buffer->isEmpty() && buffer->at(buffer->size() - 1) != '\n')
         writeOutput('\n');
 }
 
-const QByteArray *Preprocessor::currentOutputBuffer() const
+const String *Preprocessor::currentOutputBuffer() const
 {
     if (m_state.m_expansionStatus == Expanding)
         return &m_state.m_expansionResult;
@@ -2076,7 +2076,7 @@ const QByteArray *Preprocessor::currentOutputBuffer() const
     return m_state.m_result;
 }
 
-QByteArray *Preprocessor::currentOutputBuffer()
+String *Preprocessor::currentOutputBuffer()
 {
-    return const_cast<QByteArray *>(static_cast<const Preprocessor *>(this)->currentOutputBuffer());
+    return const_cast<String *>(static_cast<const Preprocessor *>(this)->currentOutputBuffer());
 }

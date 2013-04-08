@@ -1818,7 +1818,7 @@ bool Bind::visit(SimpleDeclarationAST *ast)
         type = this->specifier(it->value, type);
     }
 
-    List<Symbol *> **symbolTail = &ast->symbols;
+    CPPList<Symbol *> **symbolTail = &ast->symbols;
 
     if (! ast->declarator_list) {
         ElaboratedTypeSpecifierAST *elabTypeSpec = 0;
@@ -1839,7 +1839,7 @@ bool Bind::visit(SimpleDeclarationAST *ast)
             setDeclSpecifiers(decl, type);
             _scope->addMember(decl);
 
-            *symbolTail = new (translationUnit()->memoryPool()) List<Symbol *>(decl);
+            *symbolTail = new (translationUnit()->memoryPool()) CPPList<Symbol *>(decl);
             symbolTail = &(*symbolTail)->next;
         }
     }
@@ -1892,7 +1892,7 @@ bool Bind::visit(SimpleDeclarationAST *ast)
 
         _scope->addMember(decl);
 
-        *symbolTail = new (translationUnit()->memoryPool()) List<Symbol *>(decl);
+        *symbolTail = new (translationUnit()->memoryPool()) CPPList<Symbol *>(decl);
         symbolTail = &(*symbolTail)->next;
     }
     return false;
@@ -2327,7 +2327,7 @@ bool Bind::visit(ObjCClassForwardDeclarationAST *ast)
         declSpecifiers = this->specifier(it->value, declSpecifiers);
     }
 
-    List<ObjCForwardClassDeclaration *> **symbolTail = &ast->symbols;
+    CPPList<ObjCForwardClassDeclaration *> **symbolTail = &ast->symbols;
 
     // unsigned class_token = ast->class_token;
     for (NameListAST *it = ast->identifier_list; it; it = it->next) {
@@ -2338,7 +2338,7 @@ bool Bind::visit(ObjCClassForwardDeclarationAST *ast)
         setDeclSpecifiers(fwd, declSpecifiers);
         _scope->addMember(fwd);
 
-        *symbolTail = new (translationUnit()->memoryPool()) List<ObjCForwardClassDeclaration *>(fwd);
+        *symbolTail = new (translationUnit()->memoryPool()) CPPList<ObjCForwardClassDeclaration *>(fwd);
         symbolTail = &(*symbolTail)->next;
     }
 
@@ -2431,7 +2431,7 @@ bool Bind::visit(ObjCProtocolForwardDeclarationAST *ast)
         declSpecifiers = this->specifier(it->value, declSpecifiers);
     }
 
-    List<ObjCForwardProtocolDeclaration *> **symbolTail = &ast->symbols;
+    CPPList<ObjCForwardProtocolDeclaration *> **symbolTail = &ast->symbols;
 
     // unsigned class_token = ast->class_token;
     for (NameListAST *it = ast->identifier_list; it; it = it->next) {
@@ -2442,7 +2442,7 @@ bool Bind::visit(ObjCProtocolForwardDeclarationAST *ast)
         setDeclSpecifiers(fwd, declSpecifiers);
         _scope->addMember(fwd);
 
-        *symbolTail = new (translationUnit()->memoryPool()) List<ObjCForwardProtocolDeclaration *>(fwd);
+        *symbolTail = new (translationUnit()->memoryPool()) CPPList<ObjCForwardProtocolDeclaration *>(fwd);
         symbolTail = &(*symbolTail)->next;
     }
 
@@ -2510,7 +2510,7 @@ bool Bind::visit(ObjCPropertyDeclarationAST *ast)
     }
     // unsigned rparen_token = ast->rparen_token;
     this->declaration(ast->simple_declaration);
-    // List<ObjCPropertyDeclaration *> *symbols = ast->symbols;
+    // CPPList<ObjCPropertyDeclaration *> *symbols = ast->symbols;
     return false;
 }
 

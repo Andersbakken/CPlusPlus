@@ -1,0 +1,3 @@
+[submodule "rct"]
+	path = rct
+	url = git@github.com:Andersbakken/rct.git

@@ -54,10 +54,9 @@
 
 #include <Lexer.h>
 #include <Token.h>
-#include <QVector>
-#include <QBitArray>
-#include <QByteArray>
-#include <QPair>
+#include <rct/List.h>
+#include <rct/String.h>
+#include <utility>
 
 namespace CPlusPlus {
 
@@ -75,13 +74,12 @@ class CPLUSPLUS_EXPORT Preprocessor
     typedef Internal::Value Value;
 
 public:
-    static const QString configurationFileName;
+    static const String configurationFileName;
 
 public:
     Preprocessor(Client *client, Environment *env);
 
-    QByteArray run(const QString &filename, const QString &source);
-    QByteArray run(const QString &filename, const QByteArray &source,
+    String run(const String &filename, const String &source,
                    bool noLines = false, bool markGeneratedTokens = true);
 
     bool expandFunctionlikeMacros() const;
@@ -91,8 +89,8 @@ public:
     void setKeepComments(bool keepComments);
 
 private:
-    void preprocess(const QString &filename, const QByteArray &source,
-                    QByteArray *result, QByteArray *includeGuardMacroName,
+    void preprocess(const String &filename, const String &source,
+                    String *result, String *includeGuardMacroName,
                     bool noLines, bool markGeneratedTokens, bool inCondition,
                     unsigned offsetRef = 0, unsigned lineRef = 1);
 
@@ -111,12 +109,12 @@ private:
         void pushTokenBuffer(const PPToken *start, const PPToken *end, const Macro *macro);
         void popTokenBuffer();
 
-        QString m_currentFileName;
+        String m_currentFileName;
 
-        QByteArray m_source;
+        String m_source;
         Lexer *m_lexer;
-        QBitArray m_skipping;
-        QBitArray m_trueTest;
+        List<bool> m_skipping;
+        List<bool> m_trueTest;
         int m_ifLevel;
         unsigned m_tokenBufferDepth;
         Internal::TokenBuffer *m_tokenBuffer;
@@ -128,12 +126,12 @@ private:
         bool m_inCondition;
 
         unsigned m_offsetRef;
-        QByteArray *m_result;
+        String *m_result;
         unsigned m_lineRef;
 
         ExpansionStatus m_expansionStatus;
-        QByteArray m_expansionResult;
-        QVector<QPair<unsigned, unsigned> > m_expandedTokensInfo;
+        String m_expansionResult;
+        List<std::pair<unsigned, unsigned> > m_expandedTokensInfo;
 
         enum {
             /// State to indicate that no guard is possible anymore.
@@ -149,7 +147,7 @@ private:
             /// State for after reading the #endif belonging to the #ifndef
             IncludeGuardState_AfterEndif
         } m_includeGuardState;
-        QByteArray m_includeGuardMacroName;
+        String m_includeGuardMacroName;
 
         enum IncludeGuardStateHint {
             /// anything that is not a comment, a #ifndef, a #define, or a
@@ -186,7 +184,7 @@ private:
 
     private:
 #ifdef DEBUG_INCLUDE_GUARD_TRACKING
-        static QString guardStateToString(int guardState);
+        static String guardStateToString(int guardState);
 #endif // DEBUG_INCLUDE_GUARD_TRACKING
         void updateIncludeGuardState_helper(IncludeGuardStateHint hint, PPToken *idToken);
     };
@@ -198,22 +196,22 @@ private:
     bool handleIdentifier(PPToken *tk);
     bool handleFunctionLikeMacro(PPToken *tk,
                                  const Macro *macro,
-                                 QVector<PPToken> &body,
-                                 const QVector<QVector<PPToken> > &actuals,
+                                 List<PPToken> &body,
+                                 const List<List<PPToken> > &actuals,
                                  unsigned lineRef);
 
     bool skipping() const
     { return m_state.m_skipping[m_state.m_ifLevel]; }
 
-    QVector<CPlusPlus::Token> tokenize(const QByteArray &text) const;
+    List<CPlusPlus::Token> tokenize(const String &text) const;
 
-    bool collectActualArguments(PPToken *tk, QVector<QVector<PPToken> > *actuals);
-    void scanActualArgument(PPToken *tk, QVector<PPToken> *tokens);
+    bool collectActualArguments(PPToken *tk, List<List<PPToken> > *actuals);
+    void scanActualArgument(PPToken *tk, List<PPToken> *tokens);
 
     void handlePreprocessorDirective(PPToken *tk);
     void handleIncludeDirective(PPToken *tk, bool includeNext);
     void handleDefineDirective(PPToken *tk);
-    QByteArray expand(PPToken *tk, PPToken *lastConditionToken = 0);
+    String expand(PPToken *tk, PPToken *lastConditionToken = 0);
     const Internal::PPToken evalExpression(PPToken *tk, Value &result);
     void handleIfDirective(PPToken *tk);
     void handleElifDirective(PPToken *tk, const PPToken &poundToken);
@@ -222,21 +220,21 @@ private:
     void handleIfDefDirective(bool checkUndefined, PPToken *tk);
     void handleUndefDirective(PPToken *tk);
 
-    static bool isQtReservedWord(const ByteArrayRef &name);
+    static bool isQtReservedWord(const StringRef &name);
 
     void trackExpansionCycles(PPToken *tk);
 
     template <class T>
     void writeOutput(const T &t);
-    void writeOutput(const ByteArrayRef &ref);
+    void writeOutput(const StringRef &ref);
     bool atStartOfOutputLine() const;
     void maybeStartOutputLine();
     void generateOutputLineMarker(unsigned lineno);
     void synchronizeOutputLines(const PPToken &tk, bool forceLine = false);
     void removeTrailingOutputLines();
 
-    const QByteArray *currentOutputBuffer() const;
-    QByteArray *currentOutputBuffer();
+    const String *currentOutputBuffer() const;
+    String *currentOutputBuffer();
 
     void enforceSpacing(const PPToken &tk, bool forceSpacing = false);
     static std::size_t computeDistance(const PPToken &tk, bool forceTillLine = false);
@@ -253,7 +251,7 @@ private:
 private:
     Client *m_client;
     Environment *m_env;
-    QByteArray m_scratchBuffer;
+    String m_scratchBuffer;
 
     bool m_expandFunctionlikeMacros;
     bool m_keepComments;

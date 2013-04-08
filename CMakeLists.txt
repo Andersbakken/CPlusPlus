@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 include_directories(${CMAKE_CURRENT_LIST_DIR} cplusplus src pp)
 add_definitions(-DCPLUSPLUS_WITHOUT_QT)
+include(${CMAKE_CURRENT_LIST_DIR}/rct/rct.cmake)
 add_executable(rparser
+               ${RCT_SOURCES}
                src/main.cpp
                cplusplus/QtContextKeywords.cpp
                cplusplus/Type.cpp
@@ -38,5 +40,11 @@ add_executable(rparser
                cplusplus/Names.cpp
                cplusplus/ASTMatch0.cpp
                pp/PPToken.cpp
+               pp/Macro.cpp
+               pp/PreprocessorClient.cpp
+               pp/PreprocessorEnvironment.cpp
                pp/pp-scanner.cpp
                pp/pp-engine.cpp)
+
+target_link_libraries(rparser crypto pthread)
+

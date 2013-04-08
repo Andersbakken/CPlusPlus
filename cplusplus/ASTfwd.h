@@ -25,7 +25,7 @@
 
 namespace CPlusPlus {
 
-template <typename _Tp> class List;
+template <typename _Tp> class CPPList;
 
 class AST;
 class ASTVisitor;
@@ -186,33 +186,33 @@ class UsingAST;
 class UsingDirectiveAST;
 class WhileStatementAST;
 
-typedef List<ExpressionAST *> ExpressionListAST;
-typedef List<DeclarationAST *> DeclarationListAST;
-typedef List<StatementAST *> StatementListAST;
-typedef List<DeclaratorAST *> DeclaratorListAST;
-typedef List<BaseSpecifierAST *> BaseSpecifierListAST;
-typedef List<EnumeratorAST *> EnumeratorListAST;
-typedef List<MemInitializerAST *> MemInitializerListAST;
-typedef List<NewArrayDeclaratorAST *> NewArrayDeclaratorListAST;
-typedef List<PostfixAST *> PostfixListAST;
-typedef List<PostfixDeclaratorAST *> PostfixDeclaratorListAST;
-typedef List<AttributeAST *> AttributeListAST;
-typedef List<NestedNameSpecifierAST *> NestedNameSpecifierListAST;
-typedef List<CatchClauseAST *> CatchClauseListAST;
-typedef List<PtrOperatorAST *> PtrOperatorListAST;
-typedef List<SpecifierAST *> SpecifierListAST;
-typedef List<QtPropertyDeclarationItemAST *> QtPropertyDeclarationItemListAST;
-typedef List<NameAST *> NameListAST;
-typedef List<QtInterfaceNameAST *> QtInterfaceNameListAST;
+typedef CPPList<ExpressionAST *> ExpressionListAST;
+typedef CPPList<DeclarationAST *> DeclarationListAST;
+typedef CPPList<StatementAST *> StatementListAST;
+typedef CPPList<DeclaratorAST *> DeclaratorListAST;
+typedef CPPList<BaseSpecifierAST *> BaseSpecifierListAST;
+typedef CPPList<EnumeratorAST *> EnumeratorListAST;
+typedef CPPList<MemInitializerAST *> MemInitializerListAST;
+typedef CPPList<NewArrayDeclaratorAST *> NewArrayDeclaratorListAST;
+typedef CPPList<PostfixAST *> PostfixListAST;
+typedef CPPList<PostfixDeclaratorAST *> PostfixDeclaratorListAST;
+typedef CPPList<AttributeAST *> AttributeListAST;
+typedef CPPList<NestedNameSpecifierAST *> NestedNameSpecifierListAST;
+typedef CPPList<CatchClauseAST *> CatchClauseListAST;
+typedef CPPList<PtrOperatorAST *> PtrOperatorListAST;
+typedef CPPList<SpecifierAST *> SpecifierListAST;
+typedef CPPList<QtPropertyDeclarationItemAST *> QtPropertyDeclarationItemListAST;
+typedef CPPList<NameAST *> NameListAST;
+typedef CPPList<QtInterfaceNameAST *> QtInterfaceNameListAST;
 
-typedef List<ParameterDeclarationAST *> ParameterDeclarationListAST;
-typedef List<CaptureAST *> CaptureListAST;
+typedef CPPList<ParameterDeclarationAST *> ParameterDeclarationListAST;
+typedef CPPList<CaptureAST *> CaptureListAST;
 
-typedef List<ObjCMessageArgumentAST *> ObjCMessageArgumentListAST;
-typedef List<ObjCSelectorArgumentAST *> ObjCSelectorArgumentListAST;
-typedef List<ObjCPropertyAttributeAST *> ObjCPropertyAttributeListAST;
-typedef List<ObjCMessageArgumentDeclarationAST *> ObjCMessageArgumentDeclarationListAST;
-typedef List<ObjCSynthesizedPropertyAST *> ObjCSynthesizedPropertyListAST;
+typedef CPPList<ObjCMessageArgumentAST *> ObjCMessageArgumentListAST;
+typedef CPPList<ObjCSelectorArgumentAST *> ObjCSelectorArgumentListAST;
+typedef CPPList<ObjCPropertyAttributeAST *> ObjCPropertyAttributeListAST;
+typedef CPPList<ObjCMessageArgumentDeclarationAST *> ObjCMessageArgumentDeclarationListAST;
+typedef CPPList<ObjCSynthesizedPropertyAST *> ObjCSynthesizedPropertyListAST;
 
 } // namespace CPlusPlus
 

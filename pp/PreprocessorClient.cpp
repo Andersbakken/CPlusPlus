@@ -27,36 +27,50 @@
 **
 ****************************************************************************/
 
-#include "PPToken.h"
-
-#include <cstring>
+#include "PreprocessorClient.h"
 
 using namespace CPlusPlus;
 
-bool StringRef::startsWith(const char *s) const
-{
-    int l = std::strlen(s);
-    if (l > m_length)
-        return false;
-    return !strncmp(start(), s, l);
-}
+/*!
+    \class Client
+    \brief A notification interface for for C++ preprocessor.
+*/
 
-int StringRef::count(char ch) const
-{
-    int num = 0;
-    const char *b = start();
-    const char *i = b + m_length;
-    while (i != b)
-        if (*--i == ch)
-            ++num;
-    return num;
-}
+/*!
+    \fn void Client::macroAdded(const Macro &macro)
 
-void Internal::PPToken::squeezeSource()
-{
-    if (hasSource()) {
-        m_src = m_src.mid(offset, f.length);
-        // m_src.squeeze();
-        offset = 0;
-    }
-}
+    Called whenever a new macro is defined.
+*/
+
+/*!
+    \fn void Client::passedMacroDefinitionCheck(unsigned offset, const Macro &macro)
+
+    Called when the preprocessor checks whether a macro is defined or not and the
+    result is positive.
+
+    \sa failedMacroDefinitionCheck()
+*/
+
+/*!
+    \fn void Client::failedMacroDefinitionCheck(unsigned offset, const String &name)
+
+    Called when the preprocessor checks whether a macro is defined or not and the
+    result is negative.
+
+    \sa passedMacroDefinitionCheck()
+*/
+
+/*!
+    \fn void Client::startExpandingMacro(unsigned offset, const Macro &macro, const String &originalText, bool inCondition = false, const List<MacroArgumentReference> &actuals = List<MacroArgumentReference>())
+
+    Called when starting to expand a macro. The parameter \a inCondition indicates whether the
+    expansion is happening inside a preprocessor conditional.
+
+    \sa stopExpandingMacro()
+*/
+
+Client::Client()
+{ }
+
+Client::~Client()
+{ }
