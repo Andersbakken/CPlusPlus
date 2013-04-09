@@ -15,7 +15,7 @@
 class CppPreprocessor : public CPlusPlus::Client
 {
 public:
-    CppPreprocessor(const Path &pwd);
+    CppPreprocessor(const Path &pwd, CPlusPlus::Snapshot& snapshot);
     virtual ~CppPreprocessor();
 
     void setIncludePaths(const List<Path> &includePaths);
@@ -61,7 +61,7 @@ protected:
     virtual void sourceNeeded(unsigned line, Path &fileName, IncludeType type);
 
 private:
-    CPlusPlus::Snapshot mSnapshot;
+    CPlusPlus::Snapshot& mSnapshot;
     CPlusPlus::Environment mEnv;
     CPlusPlus::Preprocessor mPreprocess;
     CPlusPlus::Document::Ptr mCurrentDoc;

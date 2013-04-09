@@ -36,8 +36,8 @@ static const char pp_configuration[] =
     "#define __inline inline\n"
     "#define __forceinline inline\n";
 
-CppPreprocessor::CppPreprocessor(const Path &pwd)
-    : mPreprocess(this, &mEnv), mPwd(pwd)
+CppPreprocessor::CppPreprocessor(const Path &pwd, CPlusPlus::Snapshot& snapshot)
+    : mPreprocess(this, &mEnv), mSnapshot(snapshot), mPwd(pwd)
 {
     mPreprocess.setKeepComments(true);
 }
@@ -149,13 +149,13 @@ void CppPreprocessor::setTodo(const Set<Path> &files)
 
 void CppPreprocessor::run(const Path &fileName)
 {
-    Path absoluteFilePath = fileName;
+    Path absoluteFilePath = Path::resolved(fileName);
     sourceNeeded(0, absoluteFilePath, IncludeGlobal);
 }
 
 void CppPreprocessor::removeFromCache(const Path &fileName)
 {
-    // mSnapshot.remove(fileName);
+    mSnapshot.remove(fileName);
 }
 
 void CppPreprocessor::resetEnvironment()
