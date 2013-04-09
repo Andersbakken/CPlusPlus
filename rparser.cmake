@@ -1,0 +1,44 @@
+include_directories(${CMAKE_CURRENT_LIST_DIR}/cplusplus ${CMAKE_CURRENT_LIST_DIR}/pp ${CMAKE_CURRENT_LIST_DIR}/src)
+add_definitions(-DCPLUSPLUS_WITHOUT_QT)
+set(RPARSER_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/src/CppPreprocessor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/QtContextKeywords.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Type.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Token.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Templates.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Symbols.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Parser.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/DiagnosticClient.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTVisit.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/AST.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Scope.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/TranslationUnit.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/NameVisitor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ObjectiveCAtKeywords.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/TypeMatcher.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/LiteralTable.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/TypeVisitor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/FullySpecifiedType.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTVisitor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTMatcher.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Keywords.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTPatternBuilder.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Bind.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTClone.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Literals.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Name.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Symbol.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/CoreTypes.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Control.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ObjectiveCTypeQualifiers.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Lexer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/SymbolVisitor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/MemoryPool.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Names.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTMatch0.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/PreprocessorEnvironment.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/PreprocessorClient.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/PPToken.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/pp-scanner.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/Macro.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp/pp-engine.cpp)
