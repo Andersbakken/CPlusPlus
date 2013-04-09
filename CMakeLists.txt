@@ -5,6 +5,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/rct/rct.cmake)
 add_executable(rparser
                ${RCT_SOURCES}
                src/main.cpp
+               src/CppPreprocessor.cpp
                cplusplus/QtContextKeywords.cpp
                cplusplus/Type.cpp
                cplusplus/Token.cpp

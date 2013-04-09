@@ -33,6 +33,7 @@
 #include <CPlusPlusForwardDeclarations.h>
 #include <rct/List.h>
 #include <rct/String.h>
+#include <rct/Path.h>
 
 namespace CPlusPlus {
 
@@ -93,7 +94,7 @@ public:
   virtual void startSkippingBlocks(unsigned offset) = 0;
   virtual void stopSkippingBlocks(unsigned offset) = 0;
 
-  virtual void sourceNeeded(unsigned line, String &fileName, IncludeType mode) = 0;
+  virtual void sourceNeeded(unsigned line, Path &fileName, IncludeType mode) = 0;
 };
 
 } // namespace CPlusPlus

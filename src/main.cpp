@@ -1,4 +1,6 @@
 #include <Parser.h>
+#include <rct/StopWatch.h>
+#include <rct/Log.h>
 #include <TranslationUnit.h>
 #include <ASTVisitor.h>
 #include <AST.h>
@@ -675,17 +677,21 @@ int main(int argc, char **argv)
     long len = ftell(f);
     fseek(f, 0, SEEK_SET);
     char *buf = new char[len + 1];
-    fread(buf, 1, len, f);
+    if (!fread(buf, len, 1, f))
+        return 1;
     buf[len] = '\0';
 
     translationUnit.setSource(buf, len);
     translationUnit.tokenize();
     CPlusPlus::Parser parser(&translationUnit);
     CPlusPlus::TranslationUnitAST *ast = 0;
+
+    StopWatch watch;
     if (parser.parseTranslationUnit(ast)) {
+        // int elapsed = watch.elapsed();
+        // error() << elapsed;
         Visitor visitor(&translationUnit);
         visitor.accept(ast);
-        printf("[%s] %s:%d: if (parser.parseTranslationUnit(ast)) { [after]\n", __func__, __FILE__, __LINE__);
     } else {
         printf("[%s] %s:%d: } else { [after]\n", __func__, __FILE__, __LINE__);
     }

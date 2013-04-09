@@ -1574,7 +1574,7 @@ void Preprocessor::handleIncludeDirective(PPToken *tk, bool includeNext)
         return; //### TODO: add error message?
 
     if (m_client) {
-        String inc = included.mid(1, included.size() - 2);
+        Path inc = included.mid(1, included.size() - 2);
         m_client->sourceNeeded(line, inc, mode);
     }
 }
