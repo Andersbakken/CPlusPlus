@@ -7,6 +7,7 @@
 #include <rct/Set.h>
 #include <rct/Map.h>
 
+#include <CppDocument.h>
 #include <PreprocessorClient.h>
 #include <PreprocessorEnvironment.h>
 #include <pp-engine.h>
@@ -33,10 +34,15 @@ public:
     { return mTodo; }
 
     Path pwd() const { return mPwd; }
+
 protected:
+    CPlusPlus::Document::Ptr switchDocument(CPlusPlus::Document::Ptr doc);
+
     bool includeFile(const Path &absoluteFilePath, String *result);
     String tryIncludeFile(Path &fileName, IncludeType type);
     String tryIncludeFile_helper(Path &fileName, IncludeType type);
+
+    void mergeEnvironment(CPlusPlus::Document::Ptr doc);
 
     virtual void macroAdded(const CPlusPlus::Macro &macro);
     virtual void passedMacroDefinitionCheck(unsigned offset, unsigned line,
@@ -55,8 +61,10 @@ protected:
     virtual void sourceNeeded(unsigned line, Path &fileName, IncludeType type);
 
 private:
+    CPlusPlus::Snapshot mSnapshot;
     CPlusPlus::Environment mEnv;
     CPlusPlus::Preprocessor mPreprocess;
+    CPlusPlus::Document::Ptr mCurrentDoc;
     List<Path> mIncludePaths;
     List<Path> mFrameworkPaths;
     Set<Path> mIncluded;

@@ -1,4 +1,4 @@
-include_directories(${CMAKE_CURRENT_LIST_DIR}/cplusplus ${CMAKE_CURRENT_LIST_DIR}/pp ${CMAKE_CURRENT_LIST_DIR}/src)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/cplusplus ${CMAKE_CURRENT_LIST_DIR}/pp ${CMAKE_CURRENT_LIST_DIR}/src ${CMAKE_CURRENT_LIST_DIR}/doc)
 add_definitions(-DCPLUSPLUS_WITHOUT_QT)
 set(RPARSER_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/CppPreprocessor.cpp
@@ -36,6 +36,8 @@ set(RPARSER_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/cplusplus/MemoryPool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/cplusplus/Names.cpp
     ${CMAKE_CURRENT_LIST_DIR}/cplusplus/ASTMatch0.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/doc/CppDocument.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/doc/FastPreprocessor.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp/PreprocessorEnvironment.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp/PreprocessorClient.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp/PPToken.cpp

@@ -1,6 +1,9 @@
 #include "CppPreprocessor.h"
+#include <PreprocessorClient.h>
 #include <fnmatch.h>
 #include <utility>
+
+#include <rct/Log.h>
 
 static const char pp_configuration[] =
     "# 1 \"<configuration>\"\n"
@@ -58,6 +61,7 @@ void CppPreprocessor::setIncludePaths(const List<Path> &includePaths)
     for (int i = 0; i < includePaths.size(); ++i) {
         const Path path = includePaths.at(i);
 
+#warning not done
         // if (isMac()) {
         //     if (i + 1 < includePaths.size() && path.endsWith(".framework/Headers")) {
         //         Path framework = pathInfo.parentDir();
@@ -119,7 +123,7 @@ List<Path> files(const Path &dir, const char *match)
 // if the "Frameworks" folder exists inside the top level framework.
 void CppPreprocessor::addFrameworkPath(const Path &frameworkPath)
 {
-// #warning not done
+#warning not done
     // The algorithm below is a bit too eager, but that's because we're not getting
     // in the frameworks we're linking against. If we would have that, then we could
     // add only those private frameworks.
@@ -166,13 +170,6 @@ bool CppPreprocessor::includeFile(const Path &absoluteFilePath, String *result)
         return true;
     if (!absoluteFilePath.isFile())
         return false;
-
-    // if (mWorkingCopy.contains(absoluteFilePath)) {
-    //     mIncluded.insert(absoluteFilePath);
-    //     const std::pair<Path, unsigned> r = mWorkingCopy.get(absoluteFilePath);
-    //     *result = r.first;
-    //     return true;
-    // }
 
     *result = absoluteFilePath.readAll();
     mIncluded.insert(absoluteFilePath);
@@ -255,163 +252,167 @@ String CppPreprocessor::tryIncludeFile_helper(Path &fileName, IncludeType type)
 
 void CppPreprocessor::macroAdded(const CPlusPlus::Macro &macro)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->appendMacro(macro);
+    mCurrentDoc->appendMacro(macro);
 }
 
 void CppPreprocessor::passedMacroDefinitionCheck(unsigned offset, unsigned line, const CPlusPlus::Macro &macro)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->addMacroUse(revision(mWorkingCopy, macro), offset, macro.name().length(), line,
-    //                           List<MacroArgumentReference>());
+    mCurrentDoc->addMacroUse(macro, offset, macro.name().length(), line,
+                             List<CPlusPlus::MacroArgumentReference>());
 }
 
 void CppPreprocessor::failedMacroDefinitionCheck(unsigned offset, const CPlusPlus::StringRef &name)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->addUndefinedMacroUse(QByteArray(name.start(), name.size()), offset);
+    mCurrentDoc->addUndefinedMacroUse(String(name.start(), name.size()), offset);
 }
 
 void CppPreprocessor::notifyMacroReference(unsigned offset, unsigned line, const CPlusPlus::Macro &macro)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->addMacroUse(revision(mWorkingCopy, macro), offset, macro.name().length(), line,
-    //                           List<MacroArgumentReference>());
+    mCurrentDoc->addMacroUse(macro, offset, macro.name().length(), line,
+                             List<CPlusPlus::MacroArgumentReference>());
 }
 
 void CppPreprocessor::startExpandingMacro(unsigned offset, unsigned line,
                                           const CPlusPlus::Macro &macro,
                                           const List<CPlusPlus::MacroArgumentReference> &actuals)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->addMacroUse(revision(mWorkingCopy, macro), offset, macro.name().length(), line, actuals);
+    mCurrentDoc->addMacroUse(macro, offset, macro.name().length(), line, actuals);
 }
 
 void CppPreprocessor::stopExpandingMacro(unsigned, const CPlusPlus::Macro &)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
     //qDebug() << "stop expanding:" << macro.name;
 }
 
 void CppPreprocessor::markAsIncludeGuard(const String &macroName)
 {
-    // if (!mCurrentDoc)
-    //     return;
+    if (!mCurrentDoc)
+        return;
 
-    // mCurrentDoc->setIncludeGuardMacroName(macroName);
+    mCurrentDoc->setIncludeGuardMacroName(macroName);
 }
 
-// void CppPreprocessor::mergeEnvironment(Document::Ptr doc)
-// {
-//     if (!doc)
-//         return;
+void CppPreprocessor::mergeEnvironment(CPlusPlus::Document::Ptr doc)
+{
+    if (! doc)
+        return;
 
-//     const Path fn = doc->fileName();
+    const Path fn = doc->fileName();
 
-//     if (mProcessed.contains(fn))
-//         return;
+    if (mProcessed.contains(fn))
+        return;
 
-//     mProcessed.insert(fn);
+    mProcessed.insert(fn);
 
-//     foreach (const Document::Include &incl, doc->includes()) {
-//         String includedFile = incl.fileName();
+    const List<CPlusPlus::Document::Include>& includes = doc->includes();
+    for (int i = 0; i < includes.size(); ++i) {
+        const CPlusPlus::Document::Include& incl = includes.at(i);
+        Path includedFile = incl.fileName();
 
-//         if (Document::Ptr includedDoc = mSnapshot.document(includedFile))
-//             mergeEnvironment(includedDoc);
-//         else
-//             run(includedFile);
-//     }
+        if (CPlusPlus::Document::Ptr includedDoc = mSnapshot.document(includedFile))
+            mergeEnvironment(includedDoc);
+        else
+            run(includedFile);
+    }
 
-//     mEnv.addMacros(doc->definedMacros());
-// }
+    mEnv.addMacros(doc->definedMacros());
+}
 
 void CppPreprocessor::startSkippingBlocks(unsigned offset)
 {
     //qDebug() << "start skipping blocks:" << offset;
-    // if (mCurrentDoc)
-    //     mCurrentDoc->startSkippingBlocks(offset);
+    if (mCurrentDoc)
+        mCurrentDoc->startSkippingBlocks(offset);
 }
 
 void CppPreprocessor::stopSkippingBlocks(unsigned offset)
 {
     //qDebug() << "stop skipping blocks:" << offset;
-    // if (mCurrentDoc)
-    //     mCurrentDoc->stopSkippingBlocks(offset);
+    if (mCurrentDoc)
+        mCurrentDoc->stopSkippingBlocks(offset);
 }
 
 void CppPreprocessor::sourceNeeded(unsigned line, Path &fileName, IncludeType type)
 {
-    // if (fileName.isEmpty())
-    //     return;
+    if (fileName.isEmpty())
+        return;
 
-    // unsigned editorRevision = 0;
-    // String contents = tryIncludeFile(fileName, type, &editorRevision);
-    // fileName = QDir::cleanPath(fileName);
-    // if (mCurrentDoc) {
-    //     mCurrentDoc->addIncludeFile(fileName, line);
+    String contents = tryIncludeFile(fileName, type);
+    fileName.resolve();
+    if (mCurrentDoc) {
+        mCurrentDoc->addIncludeFile(fileName, line);
 
-    //     if (contents.isEmpty() && ! QFileInfo(fileName).isAbsolute()) {
-    //         String msg = QCoreApplication::translate(
-    //             "CppPreprocessor", "%1: No such file or directory").arg(fileName);
+        if (contents.isEmpty() && !fileName.isAbsolute()) {
+            String msg = String::format<128>("%s: No such file or directory", fileName.constData());
 
-    //         Document::DiagnosticMessage d(Document::DiagnosticMessage::Warning,
-    //                                       mCurrentDoc->fileName(),
-    //                                       line, /*column = */ 0,
-    //                                       msg);
+            CPlusPlus::Document::DiagnosticMessage d(CPlusPlus::Document::DiagnosticMessage::Warning,
+                                                     mCurrentDoc->fileName(),
+                                                     line, /*column = */ 0,
+                                                     msg);
 
-    //         mCurrentDoc->addDiagnosticMessage(d);
+            mCurrentDoc->addDiagnosticMessage(d);
 
-    //         //qWarning() << "file not found:" << fileName << mCurrentDoc->fileName() << env.current_line;
-    //     }
-    // }
+            //qWarning() << "file not found:" << fileName << mCurrentDoc->fileName() << env.current_line;
+        }
+    }
 
-    // if (mDumpFileNameWhileParsing) {
-    //     qDebug() << "Parsing file:" << fileName
-    //         //             << "contents:" << contents.size()
-    //         ;
-    // }
+    CPlusPlus::Document::Ptr doc = mSnapshot.document(fileName);
+    if (doc) {
+        mergeEnvironment(doc);
+        return;
+    }
 
-    // // Document::Ptr doc = mSnapshot.document(fileName);
-    // // if (doc) {
-    // //     mergeEnvironment(doc);
-    // //     return;
-    // // }
+    doc = CPlusPlus::Document::create(fileName);
 
-    // doc = Document::create(fileName);
-    // doc->setRevision(mRevision);
-    // doc->setEditorRevision(editorRevision);
+#warning not done
+    //if (fileName.isFile())
+    //    doc->setLastModified(info.lastModified());
 
-    // QFileInfo info(fileName);
-    // if (info.exists())
-    //     doc->setLastModified(info.lastModified());
+    CPlusPlus::Document::Ptr previousDoc = switchDocument(doc);
 
-    // Document::Ptr previousDoc = switchDocument(doc);
+    const String preprocessedCode = mPreprocess.run(fileName, contents);
 
-    // const QByteArray preprocessedCode = mPreprocess.run(fileName, contents);
+    {
+        String b(preprocessedCode);
+        b.replace("\n", "<<<\n");
+        error("Preprocessed code for \"%s\": [[%s]]", fileName.constData(), b.constData());
+    }
 
-    // //    { QByteArray b(preprocessedCode); b.replace("\n", "<<<\n"); qDebug("Preprocessed code for \"%s\": [[%s]]", fileName.toUtf8().constData(), b.constData()); }
+    doc->setUtf8Source(preprocessedCode);
+    doc->keepSourceAndAST();
+    doc->tokenize();
 
-    // doc->setUtf8Source(preprocessedCode);
-    // doc->keepSourceAndAST();
-    // doc->tokenize();
+    mSnapshot.insert(doc);
+    mTodo.remove(fileName);
 
-    // mSnapshot.insert(doc);
-    // mTodo.remove(fileName);
+#warning what mode to use here?
+    doc->check();
+    doc->releaseSourceAndAST();
 
-    // Process process(mModelManager, doc, mWorkingCopy);
-    // process();
+    (void) switchDocument(previousDoc);
+}
 
-    // (void) switchDocument(previousDoc);
+CPlusPlus::Document::Ptr CppPreprocessor::switchDocument(CPlusPlus::Document::Ptr doc)
+{
+    CPlusPlus::Document::Ptr previousDoc = mCurrentDoc;
+    mCurrentDoc = doc;
+    return previousDoc;
 }
