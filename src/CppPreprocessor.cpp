@@ -355,8 +355,8 @@ void CppPreprocessor::sourceNeeded(unsigned line, Path &fileName, IncludeType ty
     if (fileName.isEmpty())
         return;
 
-    String contents = tryIncludeFile(fileName, type);
     fileName.resolve();
+    String contents = tryIncludeFile(fileName, type);
     if (mCurrentDoc) {
         mCurrentDoc->addIncludeFile(fileName, line);
 
@@ -390,11 +390,13 @@ void CppPreprocessor::sourceNeeded(unsigned line, Path &fileName, IncludeType ty
 
     const String preprocessedCode = mPreprocess.run(fileName, contents);
 
+    /*
     {
         String b(preprocessedCode);
         b.replace("\n", "<<<\n");
         error("Preprocessed code for \"%s\": [[%s]]", fileName.constData(), b.constData());
     }
+    */
 
     doc->setUtf8Source(preprocessedCode);
     doc->keepSourceAndAST();
