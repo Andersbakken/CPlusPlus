@@ -4,3 +4,5 @@ Makefile
 .moc
 .rcc
 .uic
+*.dylib
+*.so
