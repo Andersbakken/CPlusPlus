@@ -29,7 +29,8 @@ public:
             Variable,
             Field,
             Argument,
-            Reference
+            Enum,
+            EnumValue
         } kind;
         Location target;
         std::set<Location> references;
