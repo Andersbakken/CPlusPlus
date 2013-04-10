@@ -248,6 +248,7 @@ public:
     void setRevision(unsigned revision);
     void setWorkingCopy(const CppTools::CppModelManagerInterface::WorkingCopy &workingCopy);
     void setIncludePaths(const QStringList &includePaths);
+    void addDefinitions(const QStringList &definitions);
     void setFrameworkPaths(const QStringList &frameworkPaths);
     void addFrameworkPath(const QString &frameworkPath);
     void setProjectFiles(const QStringList &files);

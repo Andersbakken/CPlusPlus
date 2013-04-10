@@ -1,17 +1,18 @@
 #include "rparser.h"
 #include <assert.h>
-#include <PreprocessorClient.h>
-#include <CppDocument.h>
+#include <cppmodelmanager.h>
 #include <Bind.h>
 #include <Control.h>
 #include <Symbols.h>
 #include <Literals.h>
 #include <QMap>
 
+using namespace CppTools::Internal;
+
 struct RParserPrivate
 {
-    RParserPrivate(RParser *parser) : rparser(parser), preprocessor(0) {}
-    ~RParserPrivate() { delete preprocessor; }
+    RParserPrivate(RParser *parser) : rparser(parser) {}
+    ~RParserPrivate() { }
 
     inline uint32_t fileId(const QString &file)
     {
@@ -25,12 +26,9 @@ struct RParserPrivate
     }
 
     RParser *rparser;
-    CPlusPlus::Snapshot snapshot;
-    CPlusPlus::Client *preprocessor;
     QMap<QString, uint32_t> fileIds;
 
-
-    // CppPreprocessor *preprocessor;
+    QPointer<CppModelManager> manager;
 };
 
 class Visitor : public CPlusPlus::ASTVisitor
@@ -99,54 +97,40 @@ RParser::~RParser()
     delete mData;
 }
 
-bool RParser::parse(const std::string &/* sourceFile */,
-                    const std::vector<std::string> &/* includePaths */,
-                    const std::vector<std::string> &/* defines */)
+bool RParser::parse(const std::string & sourceFile,
+                    const std::vector<std::string> & includePaths,
+                    const std::vector<std::string> & defines)
 {
-    assert(!mData->preprocessor);
-    // mData->preprocessor = new
-    // mData->preprocessor->run(sourceFile);
+    CppPreprocessor preprocessor(mData->manager);
+    QStringList incs, defs;
+    for (unsigned int i = 0; i < includePaths.size(); ++i)
+        incs << QString::fromUtf8(includePaths.at(i).c_str());
+    for (unsigned int i = 0; i < defines.size(); ++i)
+        defs << QString::fromUtf8(defines.at(i).c_str());
+    preprocessor.setIncludePaths(incs);
+    preprocessor.addDefinitions(defs);
+    QString fn = QString::fromUtf8(sourceFile.c_str());
+    preprocessor.run(fn);
 
+    visit();
 
-    return false;
+    return true;
 }
 
 void RParser::visit()
 {
-    assert(mData->preprocessor);
-    CPlusPlus::Control control;
-    CPlusPlus::Namespace *globalNamespace = control.newNamespace(0);
+    CPlusPlus::Snapshot snapshot = mData->manager->snapshot();
 
-    // const CPlusPlus::StringLiteral *fileId = control.stringLiteral(file, strlen(file));
-    // CPlusPlus::TranslationUnit translationUnit(&control, fileId);
-    // translationUnit.setQtMocRunEnabled(true);
-    // translationUnit.setCxxOxEnabled(true);
-    // translationUnit.setObjCEnabled(true);
-    // control.switchTranslationUnit(&translationUnit);
-    // const String contents = mSourceInformation.sourceFile.readAll();
-    // translationUnit.setSource(contents.constData(), contents.size());
-    // translationUnit.tokenize();
-    // CPlusPlus::Parser parser(&translationUnit);
-    // CPlusPlus::TranslationUnitAST *ast = 0;
-
-    // if (!parser.parseTranslationUnit(ast))
-    //     return false;
-    // int elapsed = watch.elapsed();
-    // error() << elapsed;
-    // Visitor visitor(&translationUnit, this);
-    // visitor.accept(ast);
-    // return true;
-    CPlusPlus::Snapshot::const_iterator doc = mData->snapshot.begin();
-    const CPlusPlus::Snapshot::const_iterator end = mData->snapshot.end();
-
+    CPlusPlus::Snapshot::const_iterator doc = snapshot.begin();
+    const CPlusPlus::Snapshot::const_iterator end = snapshot.end();
 
     while (doc != end) {
         const uint32_t fd = mData->fileId(doc.key());
         if (fd) {
             CPlusPlus::TranslationUnit *translationUnit = doc.value()->translationUnit();
-            control.switchTranslationUnit(translationUnit);
-            CPlusPlus::Parser parser(translationUnit);
+	    CPlusPlus::Parser parser(translationUnit);
             CPlusPlus::TranslationUnitAST *ast = 0;
+            CPlusPlus::Namespace *globalNamespace = doc.value()->globalNamespace();
 
             if (parser.parseTranslationUnit(ast)) {
                 CPlusPlus::Bind bind(translationUnit);

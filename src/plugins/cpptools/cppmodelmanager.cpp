@@ -199,6 +199,16 @@ void CppPreprocessor::setRevision(unsigned revision)
 void CppPreprocessor::setWorkingCopy(const CppModelManagerInterface::WorkingCopy &workingCopy)
 { m_workingCopy = workingCopy; }
 
+void CppPreprocessor::addDefinitions(const QStringList &definitions)
+{
+    QList<Macro> macros;
+    for (int i = 0; i < definitions.size(); ++i) {
+        Macro macro;
+        macro.setName(definitions.at(i));
+    }
+    m_env.addMacros(macros);
+}
+
 void CppPreprocessor::setIncludePaths(const QStringList &includePaths)
 {
     m_includePaths.clear();
