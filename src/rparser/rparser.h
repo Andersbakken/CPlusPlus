@@ -18,11 +18,11 @@ public:
 
     void visit();
     struct Location {
-        std::string path;
+        const char *path;
         uint32_t offset;
     };
     struct Symbol {
-        std::string symbolName;
+        const char *symbolName;
         enum Kind {
             FunctionDefinition,
             FunctionDeclaration,
