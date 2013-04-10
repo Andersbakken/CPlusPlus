@@ -11,14 +11,14 @@ class RParser
 {
 public:
     RParser();
-    ~RParser();
+    virtual ~RParser();
     bool parse(const std::string &sourceFile,
                const std::vector<std::string> &includePaths,
                const std::vector<std::string> &defines);
 
     void visit();
     struct Location {
-        const char *path;
+        uint32_t fileId;
         uint32_t offset;
     };
     struct Symbol {
@@ -34,12 +34,8 @@ public:
         Location target;
         std::set<Location> references;
     };
-    enum VisitorResult {
-        Break,
-        Continue,
-        Recurse
-    };
-    virtual VisitorResult visitor(const Location &/*location*/, const Symbol &/*symbol*/) { return Break; }
+    virtual uint32_t fileId(const char *fileName) = 0; // 0 means don't visit symbol
+    virtual bool visitor(const Location &/*location*/, const Symbol &/*symbol*/) { return true; }
 private:
     RParserPrivate *mData;
 };

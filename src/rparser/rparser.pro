@@ -1,6 +1,9 @@
 TEMPLATE = lib
 DEPENDPATH += .
-INCLUDEPATH += .
+INCLUDEPATH += . ../libs/cplusplus
+INCLUDEPATH += . ../libs/
+INCLUDEPATH += . ../libs/3rdparty/
+INCLUDEPATH += . ../libs/3rdparty/cplusplus
 include(../../qtcreator.pri)
 
 HEADERS += rparser.h
