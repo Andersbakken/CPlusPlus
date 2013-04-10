@@ -1,2 +1,3 @@
 TEMPLATE = subdirs
-SUBDIRS = libs
+CONFIG += ordered
+SUBDIRS = libs rparser
