@@ -6,3 +6,4 @@ Makefile
 .uic
 *.dylib
 *.so
+/src/rparser/rparser.o
