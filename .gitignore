@@ -1,0 +1,6 @@
+Makefile
+/bin/Qt Creator.app
+.obj
+.moc
+.rcc
+.uic
