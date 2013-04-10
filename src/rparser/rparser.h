@@ -34,7 +34,12 @@ public:
         Location target;
         std::set<Location> references;
     };
-    virtual void visitor(const Location &/*location*/, const Symbol &/*symbol*/) {}
+    enum VisitorResult {
+        Break,
+        Continue,
+        Recurse
+    };
+    virtual VisitorResult visitor(const Location &/*location*/, const Symbol &/*symbol*/) { return Break; }
 private:
     RParserPrivate *mData;
 };
