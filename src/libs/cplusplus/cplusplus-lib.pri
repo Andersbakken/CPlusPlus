@@ -7,6 +7,7 @@ contains(CONFIG, dll) {
 INCLUDEPATH *= $$IDE_SOURCE_TREE/src/libs/3rdparty
 
 include(../3rdparty/cplusplus/cplusplus.pri)
+include(../../plugins/cpptools/cpptools.pri)
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += concurrent
 
