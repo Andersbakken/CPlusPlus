@@ -119,7 +119,7 @@ bool RParser::parse(const std::string & sourceFile,
 
 void RParser::visit()
 {
-    CPlusPlus::Snapshot snapshot = mData->manager->snapshot();
+    const CPlusPlus::Snapshot& snapshot = mData->manager->snapshot();
 
     CPlusPlus::Snapshot::const_iterator doc = snapshot.begin();
     const CPlusPlus::Snapshot::const_iterator end = snapshot.end();
