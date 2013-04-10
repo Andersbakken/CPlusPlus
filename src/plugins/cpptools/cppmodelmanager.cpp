@@ -202,9 +202,11 @@ void CppPreprocessor::setWorkingCopy(const CppModelManagerInterface::WorkingCopy
 void CppPreprocessor::addDefinitions(const QStringList &definitions)
 {
     QList<Macro> macros;
+    macros.reserve(definitions.size());
     for (int i = 0; i < definitions.size(); ++i) {
         Macro macro;
-        macro.setName(definitions.at(i));
+        macro.setName(definitions.at(i).toLocal8Bit());
+        macros.append(macro);
     }
     m_env.addMacros(macros);
 }
