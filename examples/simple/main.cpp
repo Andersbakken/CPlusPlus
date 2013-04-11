@@ -2,10 +2,15 @@
 #include <LookupContext.h>
 #include <FindUsages.h>
 #include <QStringList>
+#include <QElapsedTimer>
 
 using namespace CPlusPlus;
 using namespace CppTools::Internal;
 
+int bind = 0;
+int visit = 0;
+int parse = 0;
+int findRef = 0;
 class Visitor : public ASTVisitor
 {
 public:
@@ -46,11 +51,14 @@ inline bool Visitor::visitSymbol(Symbol* symbol)
 {
     ++symbolCount;
 
+    QElapsedTimer timer;
+    timer.start();
     FindUsages findUsages(lookup);
     findUsages(symbol);
 
     //QList<int> refs = findUsages.references();
     QList<Usage> usages = findUsages.usages();
+    findRef += timer.elapsed();
 
     //refCount += refs.size();
     useCount += usages.size();
@@ -72,6 +80,8 @@ public:
 private slots:
     void onDocumentUpdated(CPlusPlus::Document::Ptr doc)
     {
+        QElapsedTimer timer;
+        timer.start();
         LookupContext lookup(doc, manager->snapshot());
         TranslationUnit *translationUnit = doc->translationUnit();
 
@@ -81,10 +91,13 @@ private slots:
         Namespace *globalNamespace = doc->globalNamespace();
 
         if (parser.parseTranslationUnit(ast)) {
+            parse += timer.restart();
             Bind bind(translationUnit);
             bind(ast, globalNamespace);
+            ::bind += timer.restart();
             Visitor visitor(translationUnit, manager, lookup);
             visitor.accept(ast);
+            visit += timer.restart();
 
             if (visitor.symbolCount)
                 qDebug("file '%s', symbols: %d, refs %d", qPrintable(doc->fileName()),
@@ -155,6 +168,9 @@ int main(int argc, char** argv)
     preprocessor.setIncludePaths(incs);
     preprocessor.addDefinitions(defs);
     preprocessor.run(inputFile);
+
+    printf("bind %d visit %d parse %d findRef %d\n",
+           bind, visit, parse, findRef);
 
     return 0;
 }
