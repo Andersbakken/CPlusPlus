@@ -1,5 +1,6 @@
 #include <cppmodelmanager.h>
 #include <LookupContext.h>
+#include <FindUsages.h>
 #include <QStringList>
 
 using namespace CPlusPlus;
@@ -9,7 +10,7 @@ class Visitor : public ASTVisitor
 {
 public:
     Visitor(TranslationUnit* unit, QPointer<CppModelManager> mgr, LookupContext& ctx)
-        : ASTVisitor(unit), symbolCount(0), refCount(0), manager(mgr), lookup(ctx)
+        : ASTVisitor(unit), symbolCount(0), refCount(0), useCount(0), manager(mgr), lookup(ctx)
     {}
     bool visitSymbol(Symbol* symbol);
     virtual bool visit(BaseSpecifierAST* ast) { return visitSymbol(ast->symbol); }
@@ -36,6 +37,7 @@ public:
 
     int symbolCount;
     int refCount;
+    int useCount;
     QPointer<CppModelManager> manager;
     LookupContext& lookup;
 };
@@ -43,8 +45,15 @@ public:
 inline bool Visitor::visitSymbol(Symbol* symbol)
 {
     ++symbolCount;
-    QList<int> refs = manager->references(symbol, lookup);
-    refCount += refs.size();
+
+    FindUsages findUsages(lookup);
+    findUsages(symbol);
+
+    //QList<int> refs = findUsages.references();
+    QList<Usage> usages = findUsages.usages();
+
+    //refCount += refs.size();
+    useCount += usages.size();
     return true;
 }
 
@@ -79,7 +88,7 @@ private slots:
 
             if (visitor.symbolCount)
                 qDebug("file '%s', symbols: %d, refs %d", qPrintable(doc->fileName()),
-                       visitor.symbolCount, visitor.refCount);
+                       visitor.symbolCount, visitor.useCount);
         }
     }
 
