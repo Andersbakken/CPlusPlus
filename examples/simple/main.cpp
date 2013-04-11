@@ -3,6 +3,7 @@
 #include <FindUsages.h>
 #include <QStringList>
 #include <QElapsedTimer>
+#include <assert.h>
 
 using namespace CPlusPlus;
 using namespace CppTools::Internal;
@@ -11,34 +12,71 @@ int bind = 0;
 int visit = 0;
 int parse = 0;
 int findRef = 0;
-class Visitor : public ASTVisitor
+
+class Visitor : public SymbolVisitor
 {
 public:
-    Visitor(TranslationUnit* unit, QPointer<CppModelManager> mgr, LookupContext& ctx)
-        : ASTVisitor(unit), symbolCount(0), refCount(0), useCount(0), manager(mgr), lookup(ctx)
+    Visitor(QPointer<CppModelManager> mgr, LookupContext& ctx)
+        : SymbolVisitor(), symbolCount(0), refCount(0), useCount(0), manager(mgr), lookup(ctx)
     {}
-    bool visitSymbol(Symbol* symbol);
-    virtual bool visit(BaseSpecifierAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(CatchClauseAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ClassSpecifierAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(CompoundStatementAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(EnumSpecifierAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ForStatementAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ForeachStatementAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(FunctionDeclaratorAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(FunctionDefinitionAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(IfStatementAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(NamespaceAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ObjCFastEnumerationAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ObjCMethodPrototypeAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(ObjCProtocolDeclarationAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(SwitchStatementAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(TemplateDeclarationAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(TemplateTypeParameterAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(TypenameTypeParameterAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(UsingAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(UsingDirectiveAST* ast) { return visitSymbol(ast->symbol); }
-    virtual bool visit(WhileStatementAST* ast) { return visitSymbol(ast->symbol); }
+
+    enum Type {
+        Type_UsingNamespaceDirective,
+        Type_UsingDeclaration,
+        Type_NamespaceAlias,
+        Type_Declaration,
+        Type_Argument,
+        Type_TypenameArgument,
+        Type_BaseClass,
+        Type_Enum,
+        Type_Function,
+        Type_Namespace,
+        Type_Template,
+        Type_Class,
+        Type_Block,
+        Type_ForwardClassDeclaration,
+        Type_QtPropertyDeclaration,
+        Type_QtEnum,
+        Type_ObjCBaseClass,
+        Type_ObjCBaseProtocol,
+        Type_ObjCClass,
+        Type_ObjCForwardClassDeclaration,
+        Type_ObjCProtocol,
+        Type_ObjCForwardProtocolDeclaration,
+        Type_ObjCMethod,
+        Type_ObjCPropertyDeclaration
+    };
+
+    bool visitSymbol(Type type, Symbol* symbol);
+
+    virtual bool visit(UsingNamespaceDirective *symbol) { return visitSymbol(Type_UsingNamespaceDirective, symbol); }
+    virtual bool visit(UsingDeclaration *symbol) { return visitSymbol(Type_UsingDeclaration, symbol); }
+    virtual bool visit(NamespaceAlias *symbol) { return visitSymbol(Type_NamespaceAlias, symbol); }
+    virtual bool visit(Declaration *symbol) { return visitSymbol(Type_Declaration, symbol); }
+    virtual bool visit(Argument *symbol) { return visitSymbol(Type_Argument, symbol); }
+    virtual bool visit(TypenameArgument *symbol) { return visitSymbol(Type_TypenameArgument, symbol); }
+    virtual bool visit(BaseClass *symbol) { return visitSymbol(Type_BaseClass, symbol); }
+    virtual bool visit(Enum *symbol) { return visitSymbol(Type_Enum, symbol); }
+    virtual bool visit(Function *symbol) { return visitSymbol(Type_Function, symbol); }
+    virtual bool visit(Namespace *symbol) { return visitSymbol(Type_Namespace, symbol); }
+    virtual bool visit(Template *symbol) { return visitSymbol(Type_Template, symbol); }
+    virtual bool visit(Class *symbol) { return visitSymbol(Type_Class, symbol); }
+    virtual bool visit(Block *symbol) { return visitSymbol(Type_Block, symbol); }
+    virtual bool visit(ForwardClassDeclaration *symbol) { return visitSymbol(Type_ForwardClassDeclaration, symbol); }
+
+    // Qt
+    virtual bool visit(QtPropertyDeclaration *symbol) { return visitSymbol(Type_QtPropertyDeclaration, symbol); }
+    virtual bool visit(QtEnum *symbol) { return visitSymbol(Type_QtEnum, symbol); }
+
+    // Objective-C
+    virtual bool visit(ObjCBaseClass *symbol) { return visitSymbol(Type_ObjCBaseClass, symbol); }
+    virtual bool visit(ObjCBaseProtocol *symbol) { return visitSymbol(Type_ObjCBaseProtocol, symbol); }
+    virtual bool visit(ObjCClass *symbol) { return visitSymbol(Type_ObjCClass, symbol); }
+    virtual bool visit(ObjCForwardClassDeclaration *symbol) { return visitSymbol(Type_ObjCForwardClassDeclaration, symbol); }
+    virtual bool visit(ObjCProtocol *symbol) { return visitSymbol(Type_ObjCProtocol, symbol); }
+    virtual bool visit(ObjCForwardProtocolDeclaration *symbol) { return visitSymbol(Type_ObjCForwardProtocolDeclaration, symbol); }
+    virtual bool visit(ObjCMethod *symbol) { return visitSymbol(Type_ObjCMethod, symbol); }
+    virtual bool visit(ObjCPropertyDeclaration *symbol) { return visitSymbol(Type_ObjCPropertyDeclaration, symbol); }
 
     int symbolCount;
     int refCount;
@@ -47,9 +85,49 @@ public:
     LookupContext& lookup;
 };
 
-inline bool Visitor::visitSymbol(Symbol* symbol)
+static inline QByteArray fullyQualifiedNameString(Symbol* symbol, LookupContext& lookup)
 {
+    const QList<const Name*> name = lookup.fullyQualifiedName(symbol);
+
+    QByteArray ret;
+    QList<const Name*>::const_iterator it = name.begin();
+    const QList<const Name*>::const_iterator end = name.end();
+    while (it != end) {
+        const Identifier* id = (*it)->identifier();
+        if (!id) {
+            qDebug() << "so far" << ret << (it + 1 == end) << symbol->fileName() << symbol->line() << symbol->column();
+            if ((*it)->isNameId())
+                qDebug() << "isNameId";
+            if ((*it)->isTemplateNameId())
+                qDebug() << "isTemplateNameId";
+            if ((*it)->isDestructorNameId())
+                qDebug() << "isDestructorNameId";
+            if ((*it)->isOperatorNameId())
+                qDebug() << "isOperatorNameId";
+            if ((*it)->isConversionNameId())
+                qDebug() << "isConversionNameId";
+            if ((*it)->isQualifiedNameId())
+                qDebug() << "isQualifiedNameId";
+            if ((*it)->isSelectorNameId())
+                qDebug() << "isSelectorNameId";
+            assert(id);
+            return QByteArray();
+        }
+        ret += id->chars();
+        ret += "::";
+        ++it;
+    }
+    return ret;
+}
+
+inline bool Visitor::visitSymbol(Type type, Symbol* symbol)
+{
+    if (!symbol)
+        return false;
+
     ++symbolCount;
+
+    qDebug() << "fullyQualifiedNameString" << fullyQualifiedNameString(symbol, lookup);
 
     QElapsedTimer timer;
     timer.start();
@@ -95,8 +173,8 @@ private slots:
             Bind bind(translationUnit);
             bind(ast, globalNamespace);
             ::bind += timer.restart();
-            Visitor visitor(translationUnit, manager, lookup);
-            visitor.accept(ast);
+            Visitor visitor(manager, lookup);
+            visitor.accept(globalNamespace);
             visit += timer.restart();
 
             if (visitor.symbolCount)
