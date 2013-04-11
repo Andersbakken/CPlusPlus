@@ -128,13 +128,16 @@ int main(int argc, char** argv)
             } else {
                 defs << QString::fromUtf8(argv[i] + 2, arglen - 2);
             }
-        } else {
-            // assume input
-            if (!inputFile.isEmpty()) {
-                qFatal("Already have an input file, new '%s', old '%s'", argv[i], qPrintable(inputFile));
+        } else if (i > 0 && strcmp("-o", argv[i - 1])) {
+            const QString file = QString::fromUtf8(argv[i]);
+            if (QFile::exists(file)) {
+                // assume input
+                if (!inputFile.isEmpty()) {
+                    qFatal("Already have an input file, new '%s', old '%s'", argv[i], qPrintable(inputFile));
+                }
+                inputFile = file;
+                qDebug("Using '%s' as input", argv[i]);
             }
-            inputFile = QString::fromUtf8(argv[i]);
-            qDebug("Using '%s' as input", argv[i]);
         }
     }
 
