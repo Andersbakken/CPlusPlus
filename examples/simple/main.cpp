@@ -1,16 +1,19 @@
 #include <cppmodelmanager.h>
 #include <QStringList>
 
+using namespace CPlusPlus;
+using namespace CppTools::Internal;
+
 int main(int argc, char** argv)
 {
     QString inputFile;
     QStringList incs, defs;
     int arglen;
-    for (int i = 1; i < argv; ++i) {
+    for (int i = 1; i < argc; ++i) {
         if (!strncmp(argv[i], "-I", 2)) {
             arglen = strlen(argv[i]);
             if (arglen == 2) {
-                if (i + 1 < argv) {
+                if (i + 1 < argc) {
                     incs << QString::fromUtf8(argv[i + 1]);
                     ++i;
                 } else {
@@ -22,7 +25,7 @@ int main(int argc, char** argv)
         } else if (!strncmp(argv[i], "-D", 2)) {
             arglen = strlen(argv[i]);
             if (arglen == 2) {
-                if (i + 1 < argv) {
+                if (i + 1 < argc) {
                     defs << QString::fromUtf8(argv[i + 1]);
                     ++i;
                 } else {
