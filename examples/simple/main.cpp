@@ -44,7 +44,11 @@ int main(int argc, char** argv)
         }
     }
 
-    QPointer<CppModelManager> manager;
+    if (inputFile.isEmpty()) {
+        qFatal("No input file");
+    }
+
+    QPointer<CppModelManager> manager(new CppModelManager);
     CppPreprocessor preprocessor(manager);
     preprocessor.setIncludePaths(incs);
     preprocessor.addDefinitions(defs);
