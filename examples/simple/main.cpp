@@ -1,8 +1,81 @@
 #include <cppmodelmanager.h>
+#include <LookupContext.h>
 #include <QStringList>
 
 using namespace CPlusPlus;
 using namespace CppTools::Internal;
+
+class Visitor : public ASTVisitor
+{
+public:
+    Visitor(TranslationUnit* unit, QPointer<CppModelManager> mgr, LookupContext& ctx)
+        : ASTVisitor(unit), symbolCount(0), refCount(0), manager(mgr), lookup(ctx)
+    {}
+    bool visitSymbol(Symbol* symbol);
+    virtual bool visit(BaseSpecifierAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(CatchClauseAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ClassSpecifierAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(CompoundStatementAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(EnumSpecifierAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ForStatementAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ForeachStatementAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(FunctionDeclaratorAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(FunctionDefinitionAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(IfStatementAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(NamespaceAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ObjCFastEnumerationAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ObjCMethodPrototypeAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(ObjCProtocolDeclarationAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(SwitchStatementAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(TemplateDeclarationAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(TemplateTypeParameterAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(TypenameTypeParameterAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(UsingAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(UsingDirectiveAST* ast) { return visitSymbol(ast->symbol); }
+    virtual bool visit(WhileStatementAST* ast) { return visitSymbol(ast->symbol); }
+
+    int symbolCount;
+    int refCount;
+    QPointer<CppModelManager> manager;
+    LookupContext& lookup;
+};
+
+inline bool Visitor::visitSymbol(Symbol* symbol)
+{
+    ++symbolCount;
+    QList<int> refs = manager->references(symbol, lookup);
+    refCount += refs.size();
+    return true;
+}
+
+class DocumentReffer : public QObject
+{
+    Q_OBJECT
+public:
+    DocumentReffer(QObject* parent = 0)
+        : QObject(parent)
+    {
+    }
+    ~DocumentReffer()
+    {
+        foreach(Document::Ptr doc, docs)
+        {
+            doc->releaseSourceAndAST();
+        }
+    }
+
+private slots:
+    void onDocumentUpdated(CPlusPlus::Document::Ptr doc)
+    {
+        doc->keepSourceAndAST();
+        docs.insert(doc);
+    }
+
+public:
+    QSet<Document::Ptr> docs;
+};
+
+#include "main.moc"
 
 int main(int argc, char** argv)
 {
@@ -49,16 +122,39 @@ int main(int argc, char** argv)
     }
 
     QPointer<CppModelManager> manager(new CppModelManager);
+
+    DocumentReffer reffer;
+    QObject::connect(manager.data(), SIGNAL(documentUpdated(CPlusPlus::Document::Ptr)),
+                     &reffer, SLOT(onDocumentUpdated(CPlusPlus::Document::Ptr)), Qt::DirectConnection);
+
     CppPreprocessor preprocessor(manager);
     preprocessor.setIncludePaths(incs);
     preprocessor.addDefinitions(defs);
     preprocessor.run(inputFile);
 
-    CPlusPlus::Snapshot::const_iterator doc = manager->snapshot().begin();
-    const CPlusPlus::Snapshot::const_iterator end = manager->snapshot().end();
+    const Snapshot& snapshot = manager->snapshot();
+    Snapshot::const_iterator doc = snapshot.begin();
+    const Snapshot::const_iterator end = snapshot.end();
     while (doc != end) {
-        CPlusPlus::TranslationUnit *translationUnit = doc.value()->translationUnit();
-        qDebug("Got doc '%s' with unit %p", qPrintable(doc.key()), translationUnit);
+        Document::Ptr document = doc.value();
+        LookupContext lookup(document, snapshot);
+        TranslationUnit *translationUnit = document->translationUnit();
+        //qDebug("Got doc '%s' with unit %p and doc %p",
+        //       qPrintable(doc.key()), translationUnit, document.data());
+
+        Parser parser(translationUnit);
+        TranslationUnitAST *ast = 0;
+        Namespace *globalNamespace = document->globalNamespace();
+
+        if (parser.parseTranslationUnit(ast)) {
+            Bind bind(translationUnit);
+            bind(ast, globalNamespace);
+            Visitor visitor(translationUnit, manager, lookup);
+            visitor.accept(ast);
+            if (visitor.symbolCount)
+                qDebug("file '%s', symbols: %d, refs %d", qPrintable(doc.key()),
+                       visitor.symbolCount, visitor.refCount);
+        }
         ++doc;
     }
 
