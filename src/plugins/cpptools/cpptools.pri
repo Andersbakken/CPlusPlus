@@ -1,3 +1,5 @@
+DEFINES += CPPTOOLS_LIBRARY
+
 SOURCES += \
     $$PWD/cppfindreferences.cpp \
     $$PWD/cppmodelmanager.cpp \
