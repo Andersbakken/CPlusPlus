@@ -97,7 +97,7 @@ public:
 
     void finishedRefreshingSourceFiles(const QStringList &files);
 
-    virtual void setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider);
+    //virtual void setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider);
 
     virtual void setIndexingSupport(CppIndexingSupport *indexingSupport);
     virtual CppIndexingSupport *indexingSupport();
