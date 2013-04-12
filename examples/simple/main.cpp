@@ -225,6 +225,27 @@ public:
         return src.mid(scope->startOffset(), scope->endOffset() - scope->startOffset());
     }
 
+    QList<Usage> findUsages(Symbol* symbol, const QByteArray& unpreprocessedSource, Document::Ptr doc)
+    {
+        const Identifier *symbolId = symbol->identifier();
+        const Snapshot& snapshot = manager->snapshot();
+
+        QList<Usage> usages;
+
+        Control *control = doc->control();
+        if (control->findIdentifier(symbolId->chars(), symbolId->size()) != 0) {
+            //doc->setGlobalNamespace(0);
+            //doc->check();
+
+            FindUsages process(unpreprocessedSource, doc, snapshot);
+            process(symbol);
+
+            usages = process.usages();
+        }
+
+        return usages;
+    }
+
     void processInput(char* line)
     {
         char* save;
@@ -261,22 +282,22 @@ public:
         }
 
         TranslationUnit *translationUnit = doc->translationUnit();
-
+        printf("men... %p\n", doc->globalNamespace());
         LookupContext lookup(doc, manager->snapshot());
 
         TypeOfExpression typeofExpression;
         typeofExpression.init(doc, manager->snapshot(), lookup.bindings());
 
-        /*
+        printf("men... 2 %p\n", doc->globalNamespace());
         ReallyFindScopeAt really(translationUnit, l, c);
         Scope* scope = really(doc->globalNamespace());
         if (!scope) {
             qWarning("no scope at %d:%d", l, c);
             return;
         }
-        */
-        Scope* scope = doc->scopeAt(l, c);
+        //Scope* scope = doc->scopeAt(l, c);
 
+        printf("men... 3 %p\n", doc->globalNamespace());
         QByteArray src = doc->utf8Source();
 
         // try to find the symbol outright
@@ -288,7 +309,15 @@ public:
                 if (sym->line() == l && sym->column() <= c &&
                     sym->column() + id->size() >= c) {
                     // yes
-                    qDebug() << "found symbol outright" << id->chars();
+                    qDebug("found symbol outright %s at %s:%d:%d", id->chars(), sym->fileName(), sym->line(), sym->column());;
+
+                    qDebug() << "finding refs";
+
+                    const QList<Usage> usages = findUsages(sym, src, doc);
+                    foreach(const Usage& usage, usages) {
+                        qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
+                    }
+
                     return;
                 }
             }
@@ -312,6 +341,7 @@ public:
         for (int i = asts.size() - 1; i >= 0; --i) {
             typeofExpression.setExpandTemplates(true);
             QByteArray expression = tokenForAst(asts.at(i), translationUnit, src);
+            qDebug("trying expr %s", qPrintable(expression));
             const QList<LookupItem> results = typeofExpression(expression, scope, TypeOfExpression::Preprocess);
             qDebug("candidate count %d", results.size());
             if (!results.isEmpty()) {
@@ -320,7 +350,7 @@ public:
                     if (declcand) {
                         const Identifier* declid = declcand->identifier();
                         if (declid) {
-                            qDebug("got decl %s", declid->chars());
+                            qDebug("got decl %s at %s:%d:%d", declid->chars(), declcand->fileName(), declcand->line(), declcand->column());
                             // ### need to check scope? or are we good?
                             decl = declcand;
                             break;
@@ -328,8 +358,29 @@ public:
                     }
                 }
             }
-            if (decl)
+            if (decl) {
+                qDebug() << "finding refs";
+
+                printf("men... 4 %p\n", doc->globalNamespace());
+                const QList<Usage> usages = findUsages(decl, src, doc);
+                qDebug() << "found refs" << usages.size();
+                foreach(const Usage& usage, usages) {
+                    qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
+
+                    Document::Ptr doc = manager->document(usage.path);
+                    if (doc) {
+                        Symbol* refsym = doc->lastVisibleSymbolAt(usage.line, usage.col + 1);
+                        if (refsym) {
+                            if (refsym->line() == static_cast<unsigned>(usage.line) &&
+                                refsym->column() == static_cast<unsigned>(usage.col + 1)) {
+                                qDebug() << "it's a symbol!";
+                            }
+                        }
+                    }
+                }
+
                 break;
+            }
         }
     }
 
@@ -338,7 +389,6 @@ private slots:
     {
         // seems I need to keep this around
         doc->keepSourceAndAST();
-
         const QFileInfo info(doc->fileName());
         const QString canonical = info.canonicalFilePath();
 
@@ -346,25 +396,35 @@ private slots:
         //     return;
         // seen.insert(canonical);
 
-        QElapsedTimer timer;
-        timer.start();
-        LookupContext lookup(doc, manager->snapshot());
+        //QElapsedTimer timer;
+        //timer.start();
+        //LookupContext lookup(doc, manager->snapshot());
         TranslationUnit *translationUnit = doc->translationUnit();
 
         Parser parser(translationUnit);
 
-        TranslationUnitAST *ast = 0;
         Namespace *globalNamespace = doc->globalNamespace();
 
-        if (parser.parseTranslationUnit(ast)) {
-            Bind bind(translationUnit);
+        Bind bind(translationUnit);
+
+        if (!translationUnit->ast())
+            return; // nothing to do.
+
+        if (TranslationUnitAST *ast = translationUnit->ast()->asTranslationUnit())
             bind(ast, globalNamespace);
-            //Visitor visitor(manager, lookup);
-            //visitor.accept(globalNamespace);
-            //qDebug("accepted %s %d", qPrintable(doc->fileName()), visitor.symbolCount);
-            qDebug("bound %s", qPrintable(doc->fileName()));
-            //symbolCount += visitor.symbolCount;
-        }
+        else if (StatementAST *ast = translationUnit->ast()->asStatement())
+            bind(ast, globalNamespace);
+        else if (ExpressionAST *ast = translationUnit->ast()->asExpression())
+            bind(ast, globalNamespace);
+        else if (DeclarationAST *ast = translationUnit->ast()->asDeclaration())
+            bind(ast, globalNamespace);
+        //bind(ast, globalNamespace);
+        //doc->check();
+        //Visitor visitor(manager, lookup);
+        //visitor.accept(globalNamespace);
+        //qDebug("accepted %s %d", qPrintable(doc->fileName()), visitor.symbolCount);
+        qDebug("bound %s", qPrintable(doc->fileName()));
+        //symbolCount += visitor.symbolCount;
     }
 
 public:
