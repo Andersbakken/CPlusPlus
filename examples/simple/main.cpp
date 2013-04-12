@@ -1,5 +1,6 @@
 #include <QStack>
 #include <cppmodelmanager.h>
+#include <searchsymbols.h>
 #include <LookupContext.h>
 #include <FindUsages.h>
 #include <ASTPath.h>
@@ -9,6 +10,7 @@
 #include <stdio.h>
 
 using namespace CPlusPlus;
+using namespace CppTools;
 using namespace CppTools::Internal;
 
 class ReallyFindScopeAt: protected SymbolVisitor
@@ -309,18 +311,30 @@ public:
             ret = strtok_r(0, ":", &save);
         }
 
-        if (cnt != 3) {
-            qWarning("Invalid input %s", line);
-            return;
-        }
-
-        qDebug("processing %s:%d:%d", qPrintable(fn), l, c);
         Document::Ptr doc = manager->document(fn);
         if (!doc) {
             qWarning("No document for %s", qPrintable(fn));
             return;
         }
 
+        if (cnt == 1) {
+            qDebug("looking up sym %s", qPrintable(fn));
+            SearchSymbols search;
+            search.setSymbolsToSearchFor(SearchSymbols::AllTypes);
+            search.setSeparateScope(true);
+            QList<ModelItemInfo> items = search(doc);
+            foreach(const ModelItemInfo& item, items) {
+                qDebug("  got %s (%s)", qPrintable(item.fullyQualifiedName.join("::")), qPrintable(item.symbolType));
+            }
+            return;
+        }
+
+        if (cnt != 3) {
+            qWarning("Invalid input %s", line);
+            return;
+        }
+
+        qDebug("processing %s:%d:%d", qPrintable(fn), l, c);
         TranslationUnit *translationUnit = doc->translationUnit();
         printf("men... %p\n", doc->globalNamespace());
         LookupContext lookup(doc, manager->snapshot());

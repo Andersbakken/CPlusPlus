@@ -34,12 +34,10 @@
 #include "cppindexingsupport.h"
 
 #include <cplusplus/CppDocument.h>
-#include <cplusplus/Icons.h>
 #include <cplusplus/Overview.h>
 #include <cplusplus/SymbolVisitor.h>
 #include <cplusplus/Symbols.h>
 
-#include <QIcon>
 #include <QMetaType>
 #include <QString>
 #include <QSet>
@@ -65,13 +63,11 @@ struct CPPTOOLS_EXPORT ModelItemInfo
                   QStringList fullyQualifiedName,
                   const QString &fileName,
                   int line,
-                  int column,
-                  const QIcon &icon)
+                  int column)
         : symbolName(symbolName),
           symbolType(symbolType),
           fullyQualifiedName(fullyQualifiedName),
           fileName(fileName),
-          icon(icon),
           type(type),
           line(line),
           column(column)
@@ -82,7 +78,6 @@ struct CPPTOOLS_EXPORT ModelItemInfo
           symbolType(otherInfo.symbolType),
           fullyQualifiedName(otherInfo.fullyQualifiedName),
           fileName(otherInfo.fileName),
-          icon(otherInfo.icon),
           type(otherInfo.type),
           line(otherInfo.line),
           column(otherInfo.column)
@@ -92,14 +87,13 @@ struct CPPTOOLS_EXPORT ModelItemInfo
     QString symbolType;
     QStringList fullyQualifiedName;
     QString fileName;
-    QIcon icon;
     ItemType type;
     int line;
     int column;
 };
 
-class SearchSymbols: public std::binary_function<CPlusPlus::Document::Ptr, int, QList<ModelItemInfo> >,
-                     protected CPlusPlus::SymbolVisitor
+class CPPTOOLS_EXPORT SearchSymbols: public std::binary_function<CPlusPlus::Document::Ptr, int, QList<ModelItemInfo> >,
+                                     protected CPlusPlus::SymbolVisitor
 {
 public:
     typedef SymbolSearcher::SymbolTypes SymbolTypes;
@@ -165,7 +159,6 @@ private:
 
     QString _scope;
     CPlusPlus::Overview overview;
-    CPlusPlus::Icons icons;
     QList<ModelItemInfo> items;
     SymbolTypes symbolsToSearchFor;
     QHash<const CPlusPlus::StringLiteral *, QString> m_paths;

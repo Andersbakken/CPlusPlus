@@ -314,11 +314,10 @@ void SearchSymbols::appendItem(const QString &name,
         m_paths.insert(symbol->fileId(), path);
     }
 
-    const QIcon icon = icons.iconForSymbol(symbol);
     items.append(ModelItemInfo(findOrInsert(name), findOrInsert(info), type,
                                fullyQualifiedName,
                                path,
                                symbol->line(),
-                               symbol->column() - 1, // 1-based vs 0-based column
-                               icon));
+                               symbol->column() - 1 // 1-based vs 0-based column
+                               ));
 }

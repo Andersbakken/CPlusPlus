@@ -13,6 +13,6 @@ public:
 int main(int argc, char** argv)
 {
     bar* b = new bar;
-    b->helloFunc();
+    //b->helloFunc();
     return 0;
 }
