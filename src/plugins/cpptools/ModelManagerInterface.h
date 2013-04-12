@@ -202,20 +202,8 @@ public:
 
     static CppModelManagerInterface *instance();
 
-    virtual bool isCppEditor(Core::IEditor *editor) const = 0;
-
     virtual WorkingCopy workingCopy() const = 0;
     virtual CPlusPlus::Snapshot snapshot() const = 0;
-
-    /*
-    virtual QList<ProjectInfo> projectInfos() const = 0;
-    virtual ProjectInfo projectInfo(ProjectExplorer::Project *project) const = 0;
-    virtual void updateProjectInfo(const ProjectInfo &pinfo) = 0;
-    virtual QList<ProjectPart::Ptr> projectPart(const QString &fileName) const = 0;
-    */
-
-    virtual void addEditorSupport(CppTools::AbstractEditorSupport *editorSupport) = 0;
-    virtual void removeEditorSupport(CppTools::AbstractEditorSupport *editorSupport) = 0;
 
     virtual QList<int> references(CPlusPlus::Symbol *symbol,
                                   const CPlusPlus::LookupContext &context) = 0;
@@ -232,11 +220,10 @@ public:
     virtual QList<CPlusPlus::Document::DiagnosticMessage> extraDiagnostics(
             const QString &fileName, int key = AllExtraDiagnostics) const = 0;
 
+    /*
     virtual CppTools::CppCompletionSupport *completionSupport(Core::IEditor *editor) const = 0;
     virtual void setCppCompletionAssistProvider(CppTools::CppCompletionAssistProvider *completionAssistProvider) = 0;
-
-    virtual CppTools::CppHighlightingSupport *highlightingSupport(Core::IEditor *editor) const = 0;
-    virtual void setHighlightingSupportFactory(CppTools::CppHighlightingSupportFactory *highlightingFactory) = 0;
+    */
 
     virtual void setIndexingSupport(CppTools::CppIndexingSupport *indexingSupport) = 0;
     virtual CppTools::CppIndexingSupport *indexingSupport() = 0;

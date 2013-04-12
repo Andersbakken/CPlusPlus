@@ -46,15 +46,6 @@
 #include <QTimer>
 #include <QTextEdit> // for QTextEdit::ExtraSelection
 
-namespace Core { class IEditor; }
-
-/*
-namespace TextEditor {
-class ITextEditor;
-class BaseTextEditorWidget;
-} // namespace TextEditor
-*/
-
 namespace CPlusPlus { class ParseManager; }
 
 namespace CppTools {
@@ -64,7 +55,6 @@ class CppHighlightingSupportFactory;
 
 namespace Internal {
 
-class CppEditorSupport;
 class CppPreprocessor;
 class CppFindReferences;
 
@@ -89,18 +79,7 @@ public:
     bool replaceDocument(Document::Ptr newDoc);
     virtual void GC();
 
-    virtual bool isCppEditor(Core::IEditor *editor) const;
-
-    //CppEditorSupport *editorSupport(TextEditor::ITextEditor *editor) const
-    //{ return m_editorSupport.value(editor); }
-
     void emitDocumentUpdated(CPlusPlus::Document::Ptr doc);
-
-    void stopEditorSelectionsUpdate()
-    { m_updateEditorSelectionsTimer->stop(); }
-
-    virtual void addEditorSupport(AbstractEditorSupport *editorSupport);
-    virtual void removeEditorSupport(AbstractEditorSupport *editorSupport);
 
     virtual QList<int> references(CPlusPlus::Symbol *symbol, const CPlusPlus::LookupContext &context);
 
@@ -118,20 +97,10 @@ public:
 
     void finishedRefreshingSourceFiles(const QStringList &files);
 
-    virtual CppCompletionSupport *completionSupport(Core::IEditor *editor) const;
     virtual void setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider);
-
-    virtual CppHighlightingSupport *highlightingSupport(Core::IEditor *editor) const;
-    virtual void setHighlightingSupportFactory(CppHighlightingSupportFactory *highlightingFactory);
 
     virtual void setIndexingSupport(CppIndexingSupport *indexingSupport);
     virtual CppIndexingSupport *indexingSupport();
-
-    QStringList projectFiles()
-    {
-        ensureUpdated();
-        return m_projectFiles;
-    }
 
     QStringList includePaths()
     {
@@ -152,31 +121,21 @@ public:
     }
 
 Q_SIGNALS:
-    void projectPathChanged(const QString &projectPath);
-
     void aboutToRemoveFiles(const QStringList &files);
 
 public Q_SLOTS:
-    void editorOpened(Core::IEditor *editor);
-    void editorAboutToClose(Core::IEditor *editor);
     virtual void updateModifiedSourceFiles();
 
 private Q_SLOTS:
     // this should be executed in the GUI thread.
     void onDocumentUpdated(CPlusPlus::Document::Ptr doc);
     void onExtraDiagnosticsUpdated(const QString &fileName);
-    //void onAboutToUnloadSession();
-    void postEditorUpdate();
-    void updateEditorSelections();
 
 private:
-    void updateEditor(Document::Ptr doc);
-
     void replaceSnapshot(const CPlusPlus::Snapshot &newSnapshot);
     WorkingCopy buildWorkingCopyList();
 
     void ensureUpdated();
-    QStringList internalProjectFiles() const;
     QStringList internalIncludePaths() const;
     QStringList internalFrameworkPaths() const;
     QByteArray internalDefinedMacros() const;
@@ -192,34 +151,12 @@ private:
 
     // cache
     bool m_dirty;
-    QStringList m_projectFiles;
     QStringList m_includePaths;
     QStringList m_frameworkPaths;
     QByteArray m_definedMacros;
 
-    // editor integration
-    //QMap<TextEditor::ITextEditor *, CppEditorSupport *> m_editorSupport;
-
-    QSet<AbstractEditorSupport *> m_addtionalEditorSupport;
-
     mutable QMutex m_mutex;
     mutable QMutex m_protectSnapshot;
-
-    struct Editor {
-        Editor()
-            : revision(-1)
-            , updateSelections(true)
-        {}
-        int revision;
-        bool updateSelections;
-        //QPointer<TextEditor::ITextEditor> textEditor;
-        //QList<QTextEdit::ExtraSelection> selections;
-        //QList<TextEditor::BaseTextEditorWidget::BlockRange> ifdefedOutBlocks;
-    };
-
-    QList<Editor> m_todo;
-
-    QTimer *m_updateEditorSelectionsTimer;
 
     CppFindReferences *m_findReferences;
     bool m_indexerEnabled;
@@ -227,14 +164,10 @@ private:
     mutable QMutex m_protectExtraDiagnostics;
     QHash<QString, QHash<int, QList<Document::DiagnosticMessage> > > m_extraDiagnostics;
 
-    /*
-    CppCompletionAssistProvider *m_completionAssistProvider;
-    CppCompletionAssistProvider *m_completionFallback;
-    CppHighlightingSupportFactory *m_highlightingFactory;
-    CppHighlightingSupportFactory *m_highlightingFallback;
+    //CppCompletionAssistProvider *m_completionAssistProvider;
+    //CppCompletionAssistProvider *m_completionFallback;
     CppIndexingSupport *m_indexingSupporter;
     CppIndexingSupport *m_internalIndexingSupport;
-    */
 };
 
 class CPPTOOLS_EXPORT CppPreprocessor: public CPlusPlus::Client
@@ -251,7 +184,6 @@ public:
     void addDefinitions(const QStringList &definitions);
     void setFrameworkPaths(const QStringList &frameworkPaths);
     void addFrameworkPath(const QString &frameworkPath);
-    void setProjectFiles(const QStringList &files);
     void setTodo(const QStringList &files);
 
     void run(const QString &fileName);
@@ -269,9 +201,10 @@ public:
 protected:
     CPlusPlus::Document::Ptr switchDocument(CPlusPlus::Document::Ptr doc);
 
-    bool includeFile(const QString &absoluteFilePath, QString *result, unsigned *revision);
-    QString tryIncludeFile(QString &fileName, IncludeType type, unsigned *revision);
-    QString tryIncludeFile_helper(QString &fileName, IncludeType type, unsigned *revision);
+    void getFileContents(const QString &absoluteFilePath, QString *contents, unsigned *revision) const;
+    bool checkFile(const QString &absoluteFilePath) const;
+    QString resolveFile(const QString &fileName, IncludeType type);
+    QString resolveFile_helper(const QString &fileName, IncludeType type);
 
     void mergeEnvironment(CPlusPlus::Document::Ptr doc);
 
