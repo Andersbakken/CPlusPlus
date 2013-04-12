@@ -2,14 +2,109 @@
 #include <cppmodelmanager.h>
 #include <LookupContext.h>
 #include <FindUsages.h>
+#include <ASTPath.h>
 #include <QStringList>
 #include <QElapsedTimer>
 #include <assert.h>
+#include <stdio.h>
 
 using namespace CPlusPlus;
 using namespace CppTools::Internal;
 
-int fisk = 0;
+class ReallyFindScopeAt: protected SymbolVisitor
+{
+    TranslationUnit *_unit;
+    unsigned _line;
+    unsigned _column;
+    Scope *_scope;
+    unsigned _foundStart;
+    unsigned _foundEnd;
+
+public:
+    /** line and column should be 1-based */
+    ReallyFindScopeAt(TranslationUnit *unit, unsigned line, unsigned column)
+        : _unit(unit), _line(line), _column(column), _scope(0),
+          _foundStart(0), _foundEnd(0)
+    {
+    }
+
+    Scope *operator()(Symbol *symbol)
+    {
+        accept(symbol);
+        return _scope;
+    }
+
+protected:
+    bool process(Scope *symbol)
+    {
+        Scope *scope = symbol;
+
+        for (unsigned i = 0; i < scope->memberCount(); ++i) {
+            accept(scope->memberAt(i));
+        }
+
+        unsigned startLine, startColumn;
+        _unit->getPosition(scope->startOffset(), &startLine, &startColumn);
+
+        if (_line > startLine || (_line == startLine && _column >= startColumn)) {
+            unsigned endLine, endColumn;
+            _unit->getPosition(scope->endOffset(), &endLine, &endColumn);
+
+            if (_line < endLine || (_line == endLine && _column < endColumn)) {
+                if (!_scope || (scope->startOffset() >= _foundStart &&
+                                scope->endOffset() <= _foundEnd)) {
+                    _foundStart = scope->startOffset();
+                    _foundEnd = scope->endOffset();
+                    _scope = scope;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    using SymbolVisitor::visit;
+
+    virtual bool visit(UsingNamespaceDirective *) { return false; }
+    virtual bool visit(UsingDeclaration *) { return false; }
+    virtual bool visit(NamespaceAlias *) { return false; }
+    virtual bool visit(Declaration *) { return false; }
+    virtual bool visit(Argument *) { return false; }
+    virtual bool visit(TypenameArgument *) { return false; }
+    virtual bool visit(BaseClass *) { return false; }
+    virtual bool visit(ForwardClassDeclaration *) { return false; }
+
+    virtual bool visit(Enum *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(Function *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(Namespace *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(Class *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(Block *symbol)
+    { return process(symbol); }
+
+    // Objective-C
+    virtual bool visit(ObjCBaseClass *) { return false; }
+    virtual bool visit(ObjCBaseProtocol *) { return false; }
+    virtual bool visit(ObjCForwardClassDeclaration *) { return false; }
+    virtual bool visit(ObjCForwardProtocolDeclaration *) { return false; }
+    virtual bool visit(ObjCPropertyDeclaration *) { return false; }
+
+    virtual bool visit(ObjCClass *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(ObjCProtocol *symbol)
+    { return process(symbol); }
+
+    virtual bool visit(ObjCMethod *symbol)
+    { return process(symbol); }
+};
 
 class Visitor : public SymbolVisitor
 {
@@ -76,138 +171,28 @@ public:
     virtual bool visit(ObjCMethod *symbol) { return visitSymbol(Type_ObjCMethod, symbol); }
     virtual bool visit(ObjCPropertyDeclaration *symbol) { return visitSymbol(Type_ObjCPropertyDeclaration, symbol); }
 
-    virtual void postVisit(Symbol* symbol);
-
-    struct CursorInfo
-    {
-        CursorInfo(Type t, Symbol* sym, LookupContext& /*lookup*/)
-            : type(t), symbol(sym), target(0)
-        {
-            //static QSet<int> seen;
-            
-            // fullyQualifiedName = lookup.fullyQualifiedName(symbol);
-            /*
-            const Identifier* id = sym->identifier();
-            assert(id);
-            printf("type %d %u id %s (%s:%d:%d)%s\n", type, sym->hashCode(), id->chars(),
-                   sym->fileName(), sym->line(), sym->column(), seen.contains(sym->hashCode()) ? " seen" : "");
-            seen.insert(sym->hashCode());
-            */
-        }
-
-        Type type;
-        Symbol* symbol;
-        QList<const Name*> fullyQualifiedName;
-        QList<CursorInfo*> references;
-        CursorInfo* target;
-    };
-
-    typedef QHash<int, CursorInfo*> SymbolHash;
-    typedef QHash<Scope*, SymbolHash> ScopeHash;
-    // QMap<QByteArray, CursorInfo*> mSymbolNames;
-
-    ScopeHash::iterator findScope(Scope* scope);
-
     int symbolCount;
     int refCount;
     int useCount;
     QPointer<CppModelManager> manager;
     LookupContext& lookup;
-
-    ScopeHash symbols;
 };
-
-void Visitor::postVisit(Symbol* symbol)
-{
-    if (!symbol)
-        return;
-    Scope* scope = symbol->asScope();
-    if (!scope)
-        return;
-    symbols.remove(scope);
-}
 
 inline bool Visitor::visitSymbol(Type type, Symbol* symbol)
 {
     if (!symbol)
         return false;
 
+    qDebug("visiting %d", type);
+
     const Identifier* id = symbol->identifier();
     if (!id)
         return true;
 
-    const unsigned symbolHash = symbol->hashCode();
-
-    CursorInfo* info = new CursorInfo(type, symbol, lookup);
-    static int iii = 0;
-    if (++iii % 10000 && 0) {
-        QElapsedTimer timer;
-        timer.start();
-        FindUsages find(lookup);
-        find(symbol);
-        qDebug() << "Found" << find.usages().size() << timer.elapsed() << id->chars();
-    }
-    symbols[symbol->enclosingScope()][symbolHash] = info;
-
-    ++symbolCount;
-    // } else {
-    //     CursorInfo* decl = 0;
-    //     Scope* scope = symbol->enclosingScope();
-    //     while (scope) {
-    //         ScopeHash::const_iterator s = symbols.find(scope);
-    //         if (s != symbols.end()) {
-    //             SymbolHash::const_iterator sym = s.value().find(symbolHash);
-    //             if (sym != s.value().end() && compareFullyQualifiedName(sym.value()->fullyQualifiedName, info->fullyQualifiedName)) {
-    //                 decl = sym.value();
-    //                 break;
-    //             }
-    //         }
-    //         scope = scope->enclosingScope();
-    //     }
-    //     qWarning("is not decl name %s type %d loc %s:%d:%d", id->chars(), type, symbol->fileName(), symbol->line(), symbol->column());
-    //     if (!decl) {
-    //         qWarning("no decl found");
-    //         delete info;
-    //     } else {
-    //         qWarning("found decl");
-    //         info->target = decl;
-    //         decl->references.append(info);
-    //     }
-    // }
+    qDebug("  name %s", id->chars());
 
     return true;
 }
-
-class ReferenceVisitor : public ASTVisitor
-{
-public:
-    ReferenceVisitor(TranslationUnit* unit, const Document::Ptr& doc, LookupContext& ctx)
-        : ASTVisitor(unit), mDoc(doc), mSrc(doc->utf8Source()), mLookup(ctx)
-    {
-    }
-
-    virtual bool visit(SimpleNameAST */*ast*/)
-    {
-        /*
-        const Token& startTok = tokenAt(ast->firstToken());
-        const Token& endTok = tokenAt(ast->lastToken() - 1);
-        qDebug() << mSrc.mid(startTok.begin(), endTok.end() - startTok.begin());
-        */
-        //const QList<LookupItem> candidates = mLookup.lookup(ast->name, mScope);
-        return true;
-    }
-
-    virtual bool preVisit(AST */*ast*/)
-    {
-        return true;
-    }
-
-private:
-    QStack<Scope*> scopes;
-    const Document::Ptr mDoc;
-    const QByteArray mSrc;
-    LookupContext& mLookup;
-};
 
 class DocumentParser : public QObject
 {
@@ -219,11 +204,141 @@ public:
     }
     ~DocumentParser()
     {
+        const Snapshot& snapshot = manager->snapshot();
+        Snapshot::iterator it = snapshot.begin();
+        const Snapshot::const_iterator end = snapshot.end();
+        while (it != end) {
+            it.value()->releaseSourceAndAST();
+            ++it;
+        }
+    }
+
+    QByteArray tokenForAst(AST* ast, TranslationUnit* unit, const QByteArray& src)
+    {
+        const Token& start = unit->tokenAt(ast->firstToken());
+        const Token& last = unit->tokenAt(ast->lastToken() - 1);
+        return src.mid(start.begin(), last.end() - start.begin());
+    }
+
+    QByteArray debugScope(Scope* scope, const QByteArray& src)
+    {
+        return src.mid(scope->startOffset(), scope->endOffset() - scope->startOffset());
+    }
+
+    void processInput(char* line)
+    {
+        char* save;
+        char* ret = strtok_r(line, ":", &save);
+
+        QString fn;
+        unsigned l, c, cnt = 0;
+
+        while (ret) {
+            // process token
+            switch (cnt++) {
+            case 0:
+                fn = QString::fromUtf8(ret);
+                break;
+            case 1:
+            case 2: {
+                unsigned* x = (cnt == 2) ? &l : &c;
+                *x = atoi(ret);
+                break; }
+            }
+            ret = strtok_r(0, ":", &save);
+        }
+
+        if (cnt != 3) {
+            qWarning("Invalid input %s", line);
+            return;
+        }
+
+        qDebug("processing %s:%d:%d", qPrintable(fn), l, c);
+        Document::Ptr doc = manager->document(fn);
+        if (!doc) {
+            qWarning("No document for %s", qPrintable(fn));
+            return;
+        }
+
+        TranslationUnit *translationUnit = doc->translationUnit();
+
+        LookupContext lookup(doc, manager->snapshot());
+
+        TypeOfExpression typeofExpression;
+        typeofExpression.init(doc, manager->snapshot(), lookup.bindings());
+
+        /*
+        ReallyFindScopeAt really(translationUnit, l, c);
+        Scope* scope = really(doc->globalNamespace());
+        if (!scope) {
+            qWarning("no scope at %d:%d", l, c);
+            return;
+        }
+        */
+        Scope* scope = doc->scopeAt(l, c);
+
+        QByteArray src = doc->utf8Source();
+
+        // try to find the symbol outright
+        Symbol* sym = doc->lastVisibleSymbolAt(l, c);
+        if (sym) {
+            const Identifier* id = sym->identifier();
+            if (id) {
+                // ### fryktelig
+                if (sym->line() == l && sym->column() <= c &&
+                    sym->column() + id->size() >= c) {
+                    // yes
+                    qDebug() << "found symbol outright" << id->chars();
+                    return;
+                }
+            }
+            // no
+        }
+
+        ASTPath path(doc);
+        QList<AST*> asts = path(l, c);
+        qDebug("asts cnt %d", asts.size());
+        /*
+          foreach(AST* ast, asts) {
+          qDebug("ast %p (expr %p) token %s", ast, ast->asExpression(), qPrintable(tokenForAst(ast, translationUnit, src)));
+          }
+        */
+        if (asts.isEmpty()) {
+            qWarning("no ast at %d:%d", l, c);
+            return;
+        }
+
+        Symbol* decl = 0;
+        for (int i = asts.size() - 1; i >= 0; --i) {
+            typeofExpression.setExpandTemplates(true);
+            QByteArray expression = tokenForAst(asts.at(i), translationUnit, src);
+            const QList<LookupItem> results = typeofExpression(expression, scope, TypeOfExpression::Preprocess);
+            qDebug("candidate count %d", results.size());
+            if (!results.isEmpty()) {
+                foreach(const LookupItem& item, results) {
+                    Symbol* declcand = item.declaration();
+                    if (declcand) {
+                        const Identifier* declid = declcand->identifier();
+                        if (declid) {
+                            qDebug("got decl %s", declid->chars());
+                            // ### need to check scope? or are we good?
+                            decl = declcand;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (decl)
+                break;
+        }
     }
 
 private slots:
     void onDocumentUpdated(CPlusPlus::Document::Ptr doc)
     {
+        // seems I need to keep this around
+        doc->keepSourceAndAST();
+
         const QFileInfo info(doc->fileName());
         const QString canonical = info.canonicalFilePath();
 
@@ -244,21 +359,11 @@ private slots:
         if (parser.parseTranslationUnit(ast)) {
             Bind bind(translationUnit);
             bind(ast, globalNamespace);
-            Visitor visitor(manager, lookup);
-            visitor.accept(globalNamespace);
-            qDebug("accepted %s %d", qPrintable(doc->fileName()), visitor.symbolCount);
-            symbolCount += visitor.symbolCount;
-            if (visitor.symbolCount)
-                ++fisk;
-            // ReferenceVisitor refVisitor(translationUnit, doc, lookup);
-            // refVisitor.accept(ast);
-            // visit += timer.restart();
-
-            /*
-            if (visitor.symbolCount)
-                qDebug("file '%s', symbols: %d, refs %d", qPrintable(doc->fileName()),
-                       visitor.symbolCount, visitor.useCount);
-            */
+            //Visitor visitor(manager, lookup);
+            //visitor.accept(globalNamespace);
+            //qDebug("accepted %s %d", qPrintable(doc->fileName()), visitor.symbolCount);
+            qDebug("bound %s", qPrintable(doc->fileName()));
+            //symbolCount += visitor.symbolCount;
         }
     }
 
@@ -270,50 +375,9 @@ public:
 
 #include "main.moc"
 
-int main(int argc, char** argv)
+int main(int /*argc*/, char** /*argv*/)
 {
     QList<QString> inputFiles;
-    QStringList incs, defs;
-    int arglen;
-    for (int i = 1; i < argc; ++i) {
-        if (!strncmp(argv[i], "-I", 2)) {
-            arglen = strlen(argv[i]);
-            if (arglen == 2) {
-                if (i + 1 < argc) {
-                    incs << QString::fromUtf8(argv[i + 1]);
-                    ++i;
-                } else {
-                    qFatal("Missing include");
-                }
-            } else {
-                incs << QString::fromUtf8(argv[i] + 2, arglen - 2);
-            }
-        } else if (!strncmp(argv[i], "-D", 2)) {
-            arglen = strlen(argv[i]);
-            if (arglen == 2) {
-                if (i + 1 < argc) {
-                    defs << QString::fromUtf8(argv[i + 1]);
-                    ++i;
-                } else {
-                    qFatal("Missing include");
-                }
-            } else {
-                defs << QString::fromUtf8(argv[i] + 2, arglen - 2);
-            }
-        } else if (i > 0 && strcmp("-o", argv[i - 1])) {
-            const QString file = QString::fromUtf8(argv[i]);
-            if (QFile::exists(file)) {
-                // assume input
-                inputFiles.append(file);
-                qDebug("Using '%s' as input", argv[i]);
-            }
-        }
-    }
-
-    // if (inputFiles.isEmpty()) {
-    //     qFatal("No input files");
-    // }
-
     QPointer<CppModelManager> manager(new CppModelManager);
 
     DocumentParser parser(manager);
@@ -351,10 +415,28 @@ int main(int argc, char** argv)
         ++count;
     }
 
-    printf("time %lld syms %d files %d fisk %d\n",
-           timer.elapsed(), parser.symbolCount, count, fisk);
+    printf("time %lld syms %d files %d\n",
+           timer.elapsed(), parser.symbolCount, count);
 
-    ++argc;
+    for (;;) {
+        char* line = 0;
+        size_t size;
+        ssize_t r = getline(&line, &size, stdin);
+        if (r == -1)
+            break;
+        if (size) {
+            assert(r > 1);
+            if (!strncmp(line, "quit\n", 5)) {
+                free(line);
+                break;
+            }
+            assert(line[r - 1] == '\n');
+            // remove the newline
+            line[r - 1] = '\0';
+            parser.processInput(line);
+            free(line);
+        }
+    }
 
     return 0;
 }
