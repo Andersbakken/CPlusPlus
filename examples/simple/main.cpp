@@ -194,6 +194,42 @@ inline bool Visitor::visitSymbol(Type type, Symbol* symbol)
     return true;
 }
 
+static Symbol *canonicalSymbol(Scope *scope, const QString &code, TypeOfExpression &typeOfExpression)
+{
+    const QList<LookupItem> results =
+        typeOfExpression(code.toUtf8(), scope, TypeOfExpression::Preprocess);
+
+    for (int i = results.size() - 1; i != -1; --i) {
+        const LookupItem &r = results.at(i);
+        Symbol *decl = r.declaration();
+
+        if (! (decl && decl->enclosingScope()))
+            break;
+
+        if (Class *classScope = r.declaration()->enclosingScope()->asClass()) {
+            const Identifier *declId = decl->identifier();
+            const Identifier *classId = classScope->identifier();
+
+            if (classId && classId->isEqualTo(declId))
+                continue; // skip it, it's a ctor or a dtor.
+
+            else if (Function *funTy = r.declaration()->type()->asFunctionType()) {
+                if (funTy->isVirtual())
+                    return r.declaration();
+            }
+        }
+    }
+
+    for (int i = 0; i < results.size(); ++i) {
+        const LookupItem &r = results.at(i);
+
+        if (r.declaration())
+            return r.declaration();
+    }
+
+    return 0;
+}
+
 class DocumentParser : public QObject
 {
     Q_OBJECT
@@ -225,10 +261,13 @@ public:
         return src.mid(scope->startOffset(), scope->endOffset() - scope->startOffset());
     }
 
-    QList<Usage> findUsages(Symbol* symbol, const QByteArray& unpreprocessedSource, Document::Ptr doc)
+    QList<Usage> findUsages(Symbol* symbol, const QByteArray& unpreprocessedSource)
     {
         const Identifier *symbolId = symbol->identifier();
         const Snapshot& snapshot = manager->snapshot();
+
+        Document::Ptr doc = snapshot.preprocessedDocument(unpreprocessedSource, symbol->fileName());
+        doc->tokenize();
 
         QList<Usage> usages;
 
@@ -236,6 +275,7 @@ public:
         if (control->findIdentifier(symbolId->chars(), symbolId->size()) != 0) {
             //doc->setGlobalNamespace(0);
             //doc->check();
+            doc->check();
 
             FindUsages process(unpreprocessedSource, doc, snapshot);
             process(symbol);
@@ -300,30 +340,6 @@ public:
         printf("men... 3 %p\n", doc->globalNamespace());
         QByteArray src = doc->utf8Source();
 
-        // try to find the symbol outright
-        Symbol* sym = doc->lastVisibleSymbolAt(l, c);
-        if (sym) {
-            const Identifier* id = sym->identifier();
-            if (id) {
-                // ### fryktelig
-                if (sym->line() == l && sym->column() <= c &&
-                    sym->column() + id->size() >= c) {
-                    // yes
-                    qDebug("found symbol outright %s at %s:%d:%d", id->chars(), sym->fileName(), sym->line(), sym->column());;
-
-                    qDebug() << "finding refs";
-
-                    const QList<Usage> usages = findUsages(sym, src, doc);
-                    foreach(const Usage& usage, usages) {
-                        qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
-                    }
-
-                    return;
-                }
-            }
-            // no
-        }
-
         ASTPath path(doc);
         QList<AST*> asts = path(l, c);
         qDebug("asts cnt %d", asts.size());
@@ -341,45 +357,53 @@ public:
         for (int i = asts.size() - 1; i >= 0; --i) {
             typeofExpression.setExpandTemplates(true);
             QByteArray expression = tokenForAst(asts.at(i), translationUnit, src);
-            qDebug("trying expr %s", qPrintable(expression));
-            const QList<LookupItem> results = typeofExpression(expression, scope, TypeOfExpression::Preprocess);
-            qDebug("candidate count %d", results.size());
-            if (!results.isEmpty()) {
-                foreach(const LookupItem& item, results) {
-                    Symbol* declcand = item.declaration();
-                    if (declcand) {
-                        const Identifier* declid = declcand->identifier();
-                        if (declid) {
-                            qDebug("got decl %s at %s:%d:%d", declid->chars(), declcand->fileName(), declcand->line(), declcand->column());
-                            // ### need to check scope? or are we good?
-                            decl = declcand;
-                            break;
+            decl = canonicalSymbol(scope, expression, typeofExpression);
+            if (decl)
+                break;
+        }
+        if (decl) {
+            qDebug() << "finding refs";
+
+            printf("men... 4 %p\n", doc->globalNamespace());
+            const QList<Usage> usages = findUsages(decl, src);
+            qDebug() << "found refs" << usages.size();
+            foreach(const Usage& usage, usages) {
+                qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
+
+                Document::Ptr doc = manager->document(usage.path);
+                if (doc) {
+                    Symbol* refsym = doc->lastVisibleSymbolAt(usage.line, usage.col + 1);
+                    if (refsym) {
+                        if (refsym->line() == static_cast<unsigned>(usage.line) &&
+                            refsym->column() == static_cast<unsigned>(usage.col + 1)) {
+                            qDebug() << "it's a symbol!";
                         }
                     }
                 }
             }
-            if (decl) {
-                qDebug() << "finding refs";
+        } else {
+            // try to find the symbol outright
+            Symbol* sym = doc->lastVisibleSymbolAt(l, c);
+            if (sym) {
+                const Identifier* id = sym->identifier();
+                if (id) {
+                    // ### fryktelig
+                    if (sym->line() == l && sym->column() <= c &&
+                        sym->column() + id->size() >= c) {
+                        // yes
+                        qDebug("found symbol outright %s at %s:%d:%d", id->chars(), sym->fileName(), sym->line(), sym->column());;
 
-                printf("men... 4 %p\n", doc->globalNamespace());
-                const QList<Usage> usages = findUsages(decl, src, doc);
-                qDebug() << "found refs" << usages.size();
-                foreach(const Usage& usage, usages) {
-                    qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
+                        qDebug() << "finding refs";
 
-                    Document::Ptr doc = manager->document(usage.path);
-                    if (doc) {
-                        Symbol* refsym = doc->lastVisibleSymbolAt(usage.line, usage.col + 1);
-                        if (refsym) {
-                            if (refsym->line() == static_cast<unsigned>(usage.line) &&
-                                refsym->column() == static_cast<unsigned>(usage.col + 1)) {
-                                qDebug() << "it's a symbol!";
-                            }
+                        const QList<Usage> usages = findUsages(sym, src);
+                        foreach(const Usage& usage, usages) {
+                            qDebug("usage %s:%d:%d (%s)", qPrintable(usage.path), usage.line, usage.col, qPrintable(usage.lineText));
                         }
+
+                        return;
                     }
                 }
-
-                break;
+                // no
             }
         }
     }
