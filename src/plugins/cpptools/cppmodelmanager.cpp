@@ -665,9 +665,11 @@ CppModelManager::CppModelManager(QObject *parent)
 
     // thread connections
     connect(this, SIGNAL(documentUpdated(CPlusPlus::Document::Ptr)),
-            this, SLOT(onDocumentUpdated(CPlusPlus::Document::Ptr)));
+            this, SLOT(onDocumentUpdated(CPlusPlus::Document::Ptr)),
+            Qt::DirectConnection);
     connect(this, SIGNAL(extraDiagnosticsUpdated(QString)),
-            this, SLOT(onExtraDiagnosticsUpdated(QString)));
+            this, SLOT(onExtraDiagnosticsUpdated(QString)),
+            Qt::DirectConnection);
 
     //m_completionFallback = new InternalCompletionAssistProvider;
     //m_completionAssistProvider = m_completionFallback;
