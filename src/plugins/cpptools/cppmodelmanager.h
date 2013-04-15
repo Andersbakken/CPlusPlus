@@ -79,6 +79,8 @@ public:
     bool replaceDocument(Document::Ptr newDoc);
     virtual void GC();
 
+    void removeFromSnapshot(const QString& fileName);
+
     void emitDocumentUpdated(CPlusPlus::Document::Ptr doc);
 
     virtual QList<int> references(CPlusPlus::Symbol *symbol, const CPlusPlus::LookupContext &context);

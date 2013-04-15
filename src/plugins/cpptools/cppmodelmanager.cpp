@@ -690,6 +690,12 @@ Snapshot CppModelManager::snapshot() const
     return m_snapshot;
 }
 
+void CppModelManager::removeFromSnapshot(const QString& fileName)
+{
+    QMutexLocker locker(&m_protectSnapshot);
+    m_snapshot.remove(fileName);
+}
+
 Document::Ptr CppModelManager::document(const QString &fileName) const
 {
     QMutexLocker locker(&m_protectSnapshot);
