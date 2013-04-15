@@ -6,6 +6,7 @@ SOURCES += \
     $$PWD/cppindexingsupport.cpp \
     $$PWD/cppmodelmanager.cpp \
     $$PWD/searchsymbols.cpp \
+    $$PWD/symbolfinder.cpp \
     $$PWD/ModelManagerInterface.cpp
 
 HEADERS += \
@@ -16,4 +17,5 @@ HEADERS += \
     $$PWD/cpptoolsconstants.h \
     $$PWD/cpptools_global.h \
     $$PWD/searchsymbols.h \
+    $$PWD/symbolfinder.h \
     $$PWD/ModelManagerInterface.h
