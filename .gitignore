@@ -1,10 +1,14 @@
 Makefile
-/bin/Qt Creator.app
-.obj
+s.obj
 .moc
 .rcc
 .uic
 *.dylib
 *.so
 *.so.*
-/src/rparser/rparser.o
+*.o
+/CMakeFiles/
+cmake_install.cmake
+/libCPlusPlus.a
+moc_*.cxx
+CMakeCache.txt
