@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 find_package(Qt4 REQUIRED)
 include(${QT_USE_FILE})
-add_definitions(${QT_DEFINITIONS})
+add_definitions(${QT_DEFINITIONS} -DNDEBUG)
 
 set(CPLUSPLUS_MOCABLE_HEADERS
     src/libs/cplusplus/OverviewModel.h
