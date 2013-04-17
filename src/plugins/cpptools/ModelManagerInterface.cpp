@@ -49,29 +49,17 @@
 
 using namespace CppTools;
 
-static CppModelManagerInterface *g_instance = 0;
-
 const QString CppModelManagerInterface::configurationFileName()
 { return CPlusPlus::Preprocessor::configurationFileName; }
 
 CppModelManagerInterface::CppModelManagerInterface(QObject *parent)
     : QObject(parent)
 {
-    Q_ASSERT(! g_instance);
-    g_instance = this;
 }
 
 CppModelManagerInterface::~CppModelManagerInterface()
 {
-    Q_ASSERT(g_instance == this);
-    g_instance = 0;
 }
-
-CppModelManagerInterface *CppModelManagerInterface::instance()
-{
-    return g_instance;
-}
-
 
 void CppModelManagerInterface::ProjectInfo::clearProjectParts()
 {

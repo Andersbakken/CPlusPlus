@@ -200,8 +200,6 @@ public:
     CppModelManagerInterface(QObject *parent = 0);
     virtual ~CppModelManagerInterface();
 
-    static CppModelManagerInterface *instance();
-
     virtual WorkingCopy workingCopy() const = 0;
     virtual CPlusPlus::Snapshot snapshot() const = 0;
 
