@@ -536,8 +536,11 @@ void CppPreprocessor::sourceNeeded(unsigned line, QString &fileName, IncludeType
         return;
 
     QString absoluteFileName = resolveFile(fileName, type);
-    if (m_included.contains(absoluteFileName))
+    if (m_included.contains(absoluteFileName)) {
+        if (m_currentDoc)
+            m_currentDoc->addIncludeFile(QDir::cleanPath(absoluteFileName), line);
         return; // we've already seen this file.
+    }
     m_included.insert(absoluteFileName);
 
     absoluteFileName = QDir::cleanPath(absoluteFileName);
