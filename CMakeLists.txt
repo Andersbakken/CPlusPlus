@@ -5,25 +5,89 @@ add_definitions(${QT_DEFINITIONS} -DNDEBUG)
 
 set(CPLUSPLUS_MOCABLE_HEADERS
     src/libs/cplusplus/OverviewModel.h
+    src/libs/extensionsystem/iplugin.h
+    src/libs/extensionsystem/pluginmanager.h
+    src/libs/extensionsystem/pluginmanager_p.h
+    src/libs/utils/detailswidget.h
+    src/libs/utils/fancymainwindow.h
+    src/libs/utils/navigationtreeview.h
+    src/plugins/coreplugin/icontext.h
+    src/plugins/coreplugin/icore.h
+    src/plugins/coreplugin/icorelistener.h
+    src/plugins/coreplugin/idocument.h
+    src/plugins/coreplugin/idocumentfactory.h
+    src/plugins/coreplugin/imode.h
+    src/plugins/coreplugin/inavigationwidgetfactory.h
+    src/plugins/coreplugin/infobar.h
+    src/plugins/coreplugin/ioutputpane.h
+    src/plugins/coreplugin/manhattanstyle.h
+    src/plugins/coreplugin/styleanimator.h
+    src/plugins/coreplugin/textdocument.h
+    src/plugins/coreplugin/dialogs/openwithdialog.h
+    src/plugins/coreplugin/editormanager/editormanager.h
+    src/plugins/coreplugin/editormanager/editorview.h
+    src/plugins/coreplugin/editormanager/ieditor.h
+    src/plugins/coreplugin/editormanager/ieditorfactory.h
+    src/plugins/coreplugin/editormanager/iexternaleditor.h
+    src/plugins/cpptools/cppcompletionassist.h
+    src/plugins/cpptools/cppcompletionassistprovider.h
     src/plugins/cpptools/cppmodelmanagerinterface.h
     src/plugins/cpptools/cppfindreferences.h
     src/plugins/cpptools/cppindexingsupport.h
     src/plugins/cpptools/cppmodelmanager.h
+    src/plugins/find/searchresultwindow.h
+    src/plugins/find/searchresultwidget.h
     src/plugins/projectexplorer/buildconfiguration.h
+    src/plugins/projectexplorer/buildsettingspropertiespage.h
+    src/plugins/projectexplorer/buildstep.h
     src/plugins/projectexplorer/buildsteplist.h
+    src/plugins/projectexplorer/codestylesettingspropertiespage.h
+    src/plugins/projectexplorer/copytaskhandler.h
+    src/plugins/projectexplorer/customtoolchain.h
+    src/plugins/projectexplorer/deployconfiguration.h
+    src/plugins/projectexplorer/editorsettingspropertiespage.h
+    src/plugins/projectexplorer/gcctoolchainfactories.h
+    src/plugins/projectexplorer/iprojectmanager.h
+    src/plugins/projectexplorer/iprojectproperties.h
+    src/plugins/projectexplorer/itaskhandler.h
     src/plugins/projectexplorer/kitmanager.h
+    src/plugins/projectexplorer/project.h
     src/plugins/projectexplorer/projectconfiguration.h
+    src/plugins/projectexplorer/projectexplorer.h
+    src/plugins/projectexplorer/projectnodes.h
+    src/plugins/projectexplorer/projecttreewidget.h
+    src/plugins/projectexplorer/removetaskhandler.h
+    src/plugins/projectexplorer/runconfiguration.h
+    src/plugins/projectexplorer/runsettingspropertiespage.h
     src/plugins/projectexplorer/session.h
-    src/plugins/projectexplorer/target.h)
+    src/plugins/projectexplorer/sessiondialog.h
+    src/plugins/projectexplorer/showineditortaskhandler.h
+    src/plugins/projectexplorer/target.h
+    src/plugins/projectexplorer/toolchain.h
+    src/plugins/projectexplorer/toolchainconfigwidget.h
+    src/plugins/projectexplorer/vcsannotatetaskhandler.h
+    src/plugins/texteditor/basetextdocumentlayout.h
+    src/plugins/texteditor/basetexteditor.h
+    src/plugins/texteditor/itexteditor.h
+    src/plugins/texteditor/texteditorsettings.h
+    src/plugins/texteditor/codeassist/iassistprovider.h
+    src/plugins/texteditor/codeassist/completionassistprovider.h)
 
 qt4_wrap_cpp(CPLUSPLUS_MOCS ${CPLUSPLUS_MOCABLE_HEADERS})
 
 include_directories(src/libs/3rdparty
                     src/libs/3rdparty/cplusplus
                     src/libs
-		    src/plugins
-		    src/plugins/projectexplorer/customwizard
-		    src/plugins/cpptools)
+                    src/plugins
+                    src/plugins/coreplugin
+                    src/plugins/coreplugin/dialogs
+                    src/plugins/coreplugin/editormanager
+                    src/plugins/texteditor
+                    src/plugins/texteditor/codeassist
+                    src/plugins/texteditor/generichighlighter
+                    src/plugins/texteditor/snippets
+                    src/plugins/projectexplorer/customwizard
+                    src/plugins/cpptools)
 
 add_library(CPlusPlus STATIC
             src/libs/3rdparty/cplusplus/AST.cpp
@@ -89,30 +153,96 @@ add_library(CPlusPlus STATIC
             src/libs/cplusplus/SymbolNameVisitor.cpp
             src/libs/cplusplus/TypeOfExpression.cpp
             src/libs/cplusplus/TypePrettyPrinter.cpp
+            src/libs/extensionsystem/iplugin.cpp
+            src/libs/extensionsystem/pluginmanager.cpp
+            src/libs/extensionsystem/optionsparser.cpp
             src/libs/languageutils/componentversion.cpp
             src/libs/languageutils/fakemetaobject.cpp
+            src/plugins/coreplugin/icontext.cpp
+            src/plugins/coreplugin/icore.cpp
+            src/plugins/coreplugin/idocument.cpp
+            src/plugins/coreplugin/imode.cpp
+            src/plugins/coreplugin/inavigationwidgetfactory.cpp
+            src/plugins/coreplugin/infobar.cpp
+            src/plugins/coreplugin/manhattanstyle.cpp
+            src/plugins/coreplugin/styleanimator.cpp
+            src/plugins/coreplugin/textdocument.cpp
+            src/plugins/coreplugin/dialogs/openwithdialog.cpp
+            src/plugins/coreplugin/editormanager/editormanager.cpp
+            src/plugins/coreplugin/editormanager/editorview.cpp
+            src/plugins/coreplugin/editormanager/ieditor.cpp
+            src/plugins/coreplugin/editormanager/ieditorfactory.cpp
+            src/plugins/coreplugin/editormanager/iexternaleditor.cpp
             src/plugins/cpptools/builtinindexingsupport.cpp
-	    src/plugins/cpptools/cpppreprocessor.cpp
-	    src/plugins/cpptools/cppprojectfile.cpp
-	    src/plugins/cpptools/cppfindreferences.cpp
+            src/plugins/cpptools/cppcompletionassist.cpp
+            src/plugins/cpptools/cppcompletionassistprovider.cpp
+            src/plugins/cpptools/cpphighlightingsupportinternal.cpp
+            src/plugins/cpptools/cpppreprocessor.cpp
+            src/plugins/cpptools/cppprojectfile.cpp
+            src/plugins/cpptools/cppfindreferences.cpp
             src/plugins/cpptools/cppindexingsupport.cpp
             src/plugins/cpptools/cppmodelmanager.cpp
-	    src/plugins/cpptools/cppmodelmanagerinterface.cpp
+            src/plugins/cpptools/cppmodelmanagerinterface.cpp
             src/plugins/cpptools/searchsymbols.cpp
             src/plugins/cpptools/symbolfinder.cpp
-	    src/plugins/projectexplorer/buildconfiguration.cpp
-	    src/plugins/projectexplorer/buildsteplist.cpp
-	    src/plugins/projectexplorer/kit.cpp
-	    src/plugins/projectexplorer/kitmanager.cpp
-	    src/plugins/projectexplorer/project.cpp
-	    src/plugins/projectexplorer/projectconfiguration.cpp
-	    src/plugins/projectexplorer/projectexplorer.cpp
-	    src/plugins/projectexplorer/session.cpp
-	    src/plugins/projectexplorer/target.cpp
-	    src/plugins/projectexplorer/task.cpp
-	    src/plugins/projectexplorer/toolchain.cpp
-	    src/libs/utils/textfileformat.cpp
+            src/plugins/find/searchresultwindow.cpp
+            src/plugins/find/searchresultwidget.cpp
+            src/plugins/projectexplorer/buildconfiguration.cpp
+            src/plugins/projectexplorer/buildsettingspropertiespage.cpp
+            src/plugins/projectexplorer/buildstep.cpp
+            src/plugins/projectexplorer/buildsteplist.cpp
+            src/plugins/projectexplorer/codestylesettingspropertiespage.cpp
+            src/plugins/projectexplorer/copytaskhandler.cpp
+            src/plugins/projectexplorer/customtoolchain.cpp
+            src/plugins/projectexplorer/deployconfiguration.cpp
+            src/plugins/projectexplorer/editorsettingspropertiespage.cpp
+            src/plugins/projectexplorer/gcctoolchain.cpp
+            src/plugins/projectexplorer/kit.cpp
+            src/plugins/projectexplorer/kitmanager.cpp
+            src/plugins/projectexplorer/nodesvisitor.cpp
+            src/plugins/projectexplorer/project.cpp
+            src/plugins/projectexplorer/projectconfiguration.cpp
+            src/plugins/projectexplorer/projectexplorer.cpp
+            src/plugins/projectexplorer/projectmacroexpander.cpp
+            src/plugins/projectexplorer/projectnodes.cpp
+            src/plugins/projectexplorer/projecttreewidget.cpp
+            src/plugins/projectexplorer/removetaskhandler.cpp
+            src/plugins/projectexplorer/runconfiguration.cpp
+            src/plugins/projectexplorer/runsettingspropertiespage.cpp
+            src/plugins/projectexplorer/session.cpp
+            src/plugins/projectexplorer/sessiondialog.cpp
+            src/plugins/projectexplorer/showineditortaskhandler.cpp
+            src/plugins/projectexplorer/target.cpp
+            src/plugins/projectexplorer/task.cpp
+            src/plugins/projectexplorer/toolchain.cpp
+            src/plugins/projectexplorer/toolchainconfigwidget.cpp
+            src/plugins/projectexplorer/vcsannotatetaskhandler.cpp
+            src/plugins/texteditor/basetextdocumentlayout.cpp
+            src/plugins/texteditor/basetexteditor.cpp
+            src/plugins/texteditor/circularclipboardassist.cpp
+            src/plugins/texteditor/itexteditor.cpp
+            src/plugins/texteditor/texteditorsettings.cpp
+            src/plugins/texteditor/codeassist/basicproposalitem.cpp
+            src/plugins/texteditor/codeassist/basicproposalitemlistmodel.cpp
+            src/plugins/texteditor/codeassist/completionassistprovider.cpp
+            src/plugins/texteditor/codeassist/defaultassistinterface.cpp
+            src/plugins/texteditor/codeassist/genericproposal.cpp
+            src/plugins/texteditor/codeassist/iassistinterface.cpp
+            src/plugins/texteditor/codeassist/iassistprocessor.cpp
+            src/plugins/texteditor/codeassist/iassistproposal.cpp
+            src/plugins/texteditor/codeassist/iassistproposalitem.cpp
+            src/plugins/texteditor/codeassist/iassistproposalmodel.cpp
+            src/plugins/texteditor/codeassist/iassistprovider.cpp
+            src/plugins/texteditor/codeassist/igenericproposalmodel.cpp
+            src/plugins/texteditor/codeassist/ifunctionhintproposalmodel.cpp
+            src/plugins/texteditor/snippets/snippet.cpp
+            src/libs/utils/detailswidget.cpp
+            src/libs/utils/fancymainwindow.cpp
             src/libs/utils/fileutils.cpp
-            src/libs/utils/savefile.cpp
+            src/libs/utils/navigationtreeview.cpp
             src/libs/utils/qtcassert.cpp
+            src/libs/utils/savefile.cpp
+            src/libs/utils/stringutils.cpp
+            src/libs/utils/stylehelper.cpp
+            src/libs/utils/textfileformat.cpp
             ${CPLUSPLUS_MOCS})

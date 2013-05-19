@@ -67,6 +67,8 @@
 #include <QSettings>
 #include <QTextCodec>
 #include <QTimer>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 
 #include <QAction>
 #include <QShortcut>

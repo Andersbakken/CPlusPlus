@@ -32,6 +32,10 @@
 
 #include <QInputDialog>
 #include <QValidator>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QDialogButtonBox>
+#include <QPushButton>
 
 using namespace ProjectExplorer;
 using namespace ProjectExplorer::Internal;
@@ -125,6 +129,7 @@ bool SessionNameInputDialog::isSwitchToRequested() const
 SessionDialog::SessionDialog(SessionManager *sessionManager, QWidget *parent)
     : QDialog(parent), m_sessionManager(sessionManager)
 {
+    /*
     m_ui.setupUi(this);
 
     connect(m_ui.btCreateNew, SIGNAL(clicked()),
@@ -146,30 +151,35 @@ SessionDialog::SessionDialog(SessionManager *sessionManager, QWidget *parent)
     m_ui.whatsASessionLabel->setOpenExternalLinks(true);
     addItems(true);
     markItems();
+    */
 }
 
 void SessionDialog::setAutoLoadSession(bool check)
 {
-    m_ui.autoLoadCheckBox->setChecked(check ? Qt::Checked : Qt::Unchecked);
+    //m_ui.autoLoadCheckBox->setChecked(check ? Qt::Checked : Qt::Unchecked);
 }
 
 bool SessionDialog::autoLoadSession() const
 {
-    return m_ui.autoLoadCheckBox->checkState() == Qt::Checked;
+    return false;
+    //return m_ui.autoLoadCheckBox->checkState() == Qt::Checked;
 }
 
 
 void SessionDialog::addItems(bool setDefaultSession)
 {
+    /*
     QStringList sessions = m_sessionManager->sessions();
     foreach (const QString &session, sessions) {
         m_ui.sessionList->addItem(session);
         if (setDefaultSession && session == m_sessionManager->activeSession())
             m_ui.sessionList->setCurrentRow(m_ui.sessionList->count() - 1);
     }
+    */
 }
 void SessionDialog::markItems()
 {
+    /*
     for (int i = 0; i < m_ui.sessionList->count(); ++i) {
         QListWidgetItem *item = m_ui.sessionList->item(i);
         QFont f = item->font();
@@ -184,10 +194,12 @@ void SessionDialog::markItems()
             f.setBold(false);
         item->setFont(f);
     }
+    */
 }
 
 void SessionDialog::updateActions()
 {
+    /*
     if (m_ui.sessionList->currentItem()) {
         bool isDefault = (m_ui.sessionList->currentItem()->text() == QLatin1String("default"));
         bool isActive = (m_ui.sessionList->currentItem()->text() == m_sessionManager->activeSession());
@@ -201,10 +213,12 @@ void SessionDialog::updateActions()
         m_ui.btClone->setEnabled(false);
         m_ui.btSwitch->setEnabled(false);
     }
+    */
 }
 
 void SessionDialog::createNew()
 {
+    /*
     SessionNameInputDialog newSessionInputDialog(m_sessionManager->sessions(), this);
     newSessionInputDialog.setWindowTitle(tr("New session name"));
 
@@ -222,10 +236,12 @@ void SessionDialog::createNew()
         if (newSessionInputDialog.isSwitchToRequested())
             switchToSession();
     }
+    */
 }
 
 void SessionDialog::clone()
 {
+    /*
     SessionNameInputDialog newSessionInputDialog(m_sessionManager->sessions(), this);
     newSessionInputDialog.setValue(m_ui.sessionList->currentItem()->text());
     newSessionInputDialog.setWindowTitle(tr("New session name"));
@@ -240,18 +256,22 @@ void SessionDialog::clone()
             markItems();
         }
     }
+    */
 }
 
 void SessionDialog::remove()
 {
+    /*
     m_sessionManager->deleteSession(m_ui.sessionList->currentItem()->text());
     m_ui.sessionList->clear();
     addItems(false);
     markItems();
+    */
 }
 
 void SessionDialog::rename()
 {
+    /*
     SessionNameInputDialog newSessionInputDialog(m_sessionManager->sessions(), this);
     newSessionInputDialog.setValue(m_ui.sessionList->currentItem()->text());
     newSessionInputDialog.setWindowTitle(tr("Rename session"));
@@ -262,15 +282,18 @@ void SessionDialog::rename()
         addItems(false);
         markItems();
     }
+    */
 }
 
 void SessionDialog::switchToSession()
 {
+    /*
     QString session = m_ui.sessionList->currentItem()->text();
     m_sessionManager->loadSession(session);
     markItems();
     updateActions();
     reject();
+    */
 }
 
 } // namespace Internal

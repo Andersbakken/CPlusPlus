@@ -32,6 +32,7 @@
 #include "project.h"
 
 #include <QTextCodec>
+#include <QCoreApplication>
 
 using namespace ProjectExplorer;
 using namespace ProjectExplorer::Internal;
@@ -68,6 +69,7 @@ PropertiesPanel *EditorSettingsPanelFactory::createPanel(Project *project)
 
 EditorSettingsWidget::EditorSettingsWidget(Project *project) : QWidget(), m_project(project)
 {
+    /*
     m_ui.setupUi(this);
 
     const EditorConfiguration *config = m_project->editorConfiguration();
@@ -88,10 +90,12 @@ EditorSettingsWidget::EditorSettingsWidget(Project *project) : QWidget(), m_proj
             config, SLOT(setExtraEncodingSettings(TextEditor::ExtraEncodingSettings)));
     connect(m_ui.behaviorSettingsWidget, SIGNAL(textCodecChanged(QTextCodec*)),
             config, SLOT(setTextCodec(QTextCodec*)));
+    */
 }
 
 void EditorSettingsWidget::settingsToUi(const EditorConfiguration *config)
 {
+    /*
     m_ui.behaviorSettingsWidget->setCodeStyle(config->codeStyle());
     m_ui.globalSelector->setCurrentIndex(config->useGlobalSettings() ? 0 : 1);
     m_ui.behaviorSettingsWidget->setAssignedCodec(config->textCodec());
@@ -99,15 +103,18 @@ void EditorSettingsWidget::settingsToUi(const EditorConfiguration *config)
     m_ui.behaviorSettingsWidget->setAssignedStorageSettings(config->storageSettings());
     m_ui.behaviorSettingsWidget->setAssignedBehaviorSettings(config->behaviorSettings());
     m_ui.behaviorSettingsWidget->setAssignedExtraEncodingSettings(config->extraEncodingSettings());
+    */
 }
 
 void EditorSettingsWidget::globalSettingsActivated(int index)
 {
+    /*
     const bool useGlobal = !index;
     m_ui.behaviorSettingsWidget->setActive(!useGlobal);
     m_ui.restoreButton->setEnabled(!useGlobal);
     EditorConfiguration *config = m_project->editorConfiguration();
     config->setUseGlobalSettings(useGlobal);
+    */
 }
 
 void EditorSettingsWidget::restoreDefaultValues()

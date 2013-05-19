@@ -479,4 +479,4 @@ Core::Id TextEditorSettings::languageId(const QString &mimeType) const
     return m_d->m_mimeTypeToLanguage.value(mimeType);
 }
 
-#include "moc_texteditorsettings.cpp"
+//#include "moc_texteditorsettings.cpp"

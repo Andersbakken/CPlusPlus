@@ -36,6 +36,7 @@ using namespace TextEditor;
 namespace TextEditor {
 namespace Internal {
 
+    /*
 class DocumentMarker : public ITextMarkable
 {
     Q_OBJECT
@@ -176,7 +177,7 @@ void DocumentMarker::updateMark(ITextMark *mark)
     QTC_ASSERT(documentLayout, return);
     documentLayout->requestUpdate();
 }
-
+*/
 } // namespace Internal
 } // namespace TextEditor
 
@@ -187,11 +188,13 @@ CodeFormatterData::~CodeFormatterData()
 TextBlockUserData::~TextBlockUserData()
 {
     foreach (ITextMark *mrk, m_marks) {
+        /*
         TextEditor::Internal::DocumentMarker *documentMarker
                 = static_cast<TextEditor::Internal::DocumentMarker *>(mrk->markableInterface());
         documentMarker->removeMarkFromMarksCache(mrk);
         mrk->setMarkableInterface(0);
         mrk->removedFromEditor();
+        */
     }
 
     if (m_codeFormatterData)
@@ -541,7 +544,7 @@ BaseTextDocumentLayout::BaseTextDocumentLayout(QTextDocument *doc)
       hasMarks(false),
       maxMarkWidthFactor(1.0),
       m_requiredWidth(0),
-      m_documentMarker(new Internal::DocumentMarker(doc))
+      m_documentMarker(0)//new Internal::DocumentMarker(doc))
 {
 
 }
@@ -693,7 +696,7 @@ void BaseTextDocumentLayout::requestExtraAreaUpdate()
 
 ITextMarkable *BaseTextDocumentLayout::markableInterface()
 {
-    return m_documentMarker;
+    return 0;//m_documentMarker;
 }
 
 void BaseTextDocumentLayout::doFoldOrUnfold(const QTextBlock& block, bool unfold)
@@ -760,11 +763,13 @@ void BaseTextDocumentLayout::documentReloaded(TextMarks marks)
             mark->setMarkableInterface(m_documentMarker);
             mark->updateBlock(block);
         } else {
+            /*
             TextEditor::Internal::DocumentMarker *documentMarker
                     = static_cast<TextEditor::Internal::DocumentMarker *>(m_documentMarker);
             documentMarker->removeMarkFromMarksCache(mark);
             mark->removedFromEditor();
             mark->setMarkableInterface(0);
+            */
         }
     }
     requestUpdate();
@@ -858,4 +863,4 @@ void BaseTextDocumentLayout::FoldValidator::finalize()
     }
 }
 
-#include "basetextdocumentlayout.moc"
+//#include "basetextdocumentlayout.moc"

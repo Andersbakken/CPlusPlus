@@ -27,41 +27,38 @@
 **
 ****************************************************************************/
 
-#ifndef OPENWITHDIALOG_H
-#define OPENWITHDIALOG_H
+#ifndef CPPEDITORCONSTANTS_H
+#define CPPEDITORCONSTANTS_H
 
-#include <QDialog>
-#include <QListWidgetItem>
-//#include "ui_openwithdialog.h"
+namespace CppEditor {
+namespace Constants {
 
-namespace Core {
+const char M_CONTEXT[] = "CppEditor.ContextMenu";
+const char C_CPPEDITOR[] = "CppEditor.C++Editor";
+const char CPPEDITOR_ID[] = "CppEditor.C++Editor";
+const char CPPEDITOR_DISPLAY_NAME[] = QT_TRANSLATE_NOOP("OpenWith::Editors", "C++ Editor");
+const char SWITCH_DECLARATION_DEFINITION[] = "CppEditor.SwitchDeclarationDefinition";
+const char OPEN_DECLARATION_DEFINITION_IN_NEXT_SPLIT[] = "CppEditor.OpenDeclarationDefinitionInNextSplit";
+const char RENAME_SYMBOL_UNDER_CURSOR[] = "CppEditor.RenameSymbolUnderCursor";
+const char FIND_USAGES[] = "CppEditor.FindUsages";
+const char M_REFACTORING_MENU_INSERTION_POINT[] = "CppEditor.RefactorGroup";
+const char UPDATE_CODEMODEL[] = "CppEditor.UpdateCodeModel";
 
-class ICore;
+const int TYPE_HIERARCHY_PRIORITY = 700;
+const char TYPE_HIERARCHY_ID[] = "CppEditor.TypeHierarchy";
+const char OPEN_TYPE_HIERARCHY[] = "CppEditor.OpenTypeHierarchy";
 
-namespace Internal {
+const char C_SOURCE_MIMETYPE[] = "text/x-csrc";
+const char C_HEADER_MIMETYPE[] = "text/x-chdr";
+const char CPP_SOURCE_MIMETYPE[] = "text/x-c++src";
+const char CPP_HEADER_MIMETYPE[] = "text/x-c++hdr";
 
-// Present the user with a file name and a list of available
-// editor kinds to choose from.
-class OpenWithDialog : public QDialog//, public Ui::OpenWithDialog
-{
-    Q_OBJECT
+const char WIZARD_CATEGORY[] = "O.C++";
+const char WIZARD_TR_CATEGORY[] = QT_TRANSLATE_NOOP("CppEditor", "C++");
 
-public:
-    OpenWithDialog(const QString &fileName, QWidget *parent);
+const char CPP_SNIPPETS_GROUP_ID[] = "C++";
 
-    void setEditors(const QStringList &);
-    int editor() const;
+} // namespace Constants
+} // namespace CppEditor
 
-    void setCurrentEditor(int index);
-
-private slots:
-    void currentItemChanged(QListWidgetItem *, QListWidgetItem *);
-
-private:
-    void setOkButtonEnabled(bool);
-};
-
-} // namespace Internal
-} // namespace Core
-
-#endif // OPENWITHDIALOG_H
+#endif // CPPEDITORCONSTANTS_H

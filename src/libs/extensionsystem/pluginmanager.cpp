@@ -764,7 +764,7 @@ QString PluginManager::testDataDirectory()
     QByteArray ba = qgetenv("QTCREATOR_TEST_DIR");
     QString s = QString::fromLocal8Bit(ba.constData(), ba.size());
     if (s.isEmpty()) {
-        s = QLatin1String(IDE_TEST_DIR);
+        //s = QLatin1String(IDE_TEST_DIR);
         s.append(QLatin1String("/tests"));
     }
     s = QDir::cleanPath(s);

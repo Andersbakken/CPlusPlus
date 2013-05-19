@@ -52,7 +52,7 @@ static const char SIZE_WARNING_ID[] = "sizeWarningLabel";
 
 namespace Find {
 namespace Internal {
-
+    /*
 class WideEnoughLineEdit : public QLineEdit {
     Q_OBJECT
 public:
@@ -70,6 +70,7 @@ public:
 public slots:
     void updateGeometry() { QLineEdit::updateGeometry(); }
 };
+    */
 
 } // Internal
 } // Find
@@ -153,7 +154,7 @@ SearchResultWidget::SearchResultWidget(QWidget *parent) :
     connect(m_searchAgainButton, SIGNAL(clicked()), this, SLOT(searchAgain()));
 
     m_replaceLabel = new QLabel(tr("Replace with:"), topWidget);
-    m_replaceTextEdit = new WideEnoughLineEdit(topWidget);
+    m_replaceTextEdit = new QLineEdit(topWidget); //new WideEnoughLineEdit(topWidget);
     m_replaceTextEdit->setMinimumWidth(120);
     m_replaceTextEdit->setEnabled(false);
     m_replaceTextEdit->setTabOrder(m_replaceTextEdit, m_searchResultTreeView);
@@ -491,4 +492,4 @@ void SearchResultWidget::updateMatchesFoundLabel()
         m_matchesFoundLabel->setText(tr("%n matches found.", 0, m_count));
 }
 
-#include "searchresultwidget.moc"
+//#include "searchresultwidget.moc"

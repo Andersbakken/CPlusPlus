@@ -33,6 +33,7 @@
 #include <texteditor/texteditorsettings.h>
 #include <texteditor/icodestylepreferencesfactory.h>
 #include <texteditor/codestyleeditor.h>
+#include <QCoreApplication>
 
 using namespace TextEditor;
 using namespace ProjectExplorer;
@@ -70,7 +71,7 @@ PropertiesPanel *CodeStyleSettingsPanelFactory::createPanel(Project *project)
 
 CodeStyleSettingsWidget::CodeStyleSettingsWidget(Project *project) : QWidget(), m_project(project)
 {
-    m_ui.setupUi(this);
+    //m_ui.setupUi(this);
 
     const EditorConfiguration *config = m_project->editorConfiguration();
 
@@ -81,15 +82,15 @@ CodeStyleSettingsWidget::CodeStyleSettingsWidget(Project *project) : QWidget(), 
         it.next();
         ICodeStylePreferencesFactory *factory = it.value();
         Core::Id languageId = factory->languageId();
-        ICodeStylePreferences *codeStylePreferences = config->codeStyle(languageId);
+        //ICodeStylePreferences *codeStylePreferences = config->codeStyle(languageId);
 
-        CodeStyleEditor *preview = new CodeStyleEditor(factory, codeStylePreferences, m_ui.stackedWidget);
-        preview->clearMargins();
-        m_ui.stackedWidget->addWidget(preview);
-        m_ui.languageComboBox->addItem(factory->displayName());
+        //CodeStyleEditor *preview = new CodeStyleEditor(factory, codeStylePreferences, m_ui.stackedWidget);
+        //preview->clearMargins();
+        //m_ui.stackedWidget->addWidget(preview);
+        //m_ui.languageComboBox->addItem(factory->displayName());
     }
 
-    connect(m_ui.languageComboBox, SIGNAL(currentIndexChanged(int)),
-            m_ui.stackedWidget, SLOT(setCurrentIndex(int)));
+    //connect(m_ui.languageComboBox, SIGNAL(currentIndexChanged(int)),
+    //        m_ui.stackedWidget, SLOT(setCurrentIndex(int)));
 }
 

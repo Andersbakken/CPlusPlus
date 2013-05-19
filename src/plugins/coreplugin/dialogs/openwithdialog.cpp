@@ -38,6 +38,7 @@ using namespace Core::Internal;
 OpenWithDialog::OpenWithDialog(const QString &fileName, QWidget *parent)
     : QDialog(parent)
 {
+    /*
     setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     label->setText(tr("Open file '%1' with:").arg(QFileInfo(fileName).fileName()));
@@ -53,30 +54,32 @@ OpenWithDialog::OpenWithDialog(const QString &fileName, QWidget *parent)
             this, SLOT(currentItemChanged(QListWidgetItem*,QListWidgetItem*)));
 
     setOkButtonEnabled(false);
+    */
 }
 
 void OpenWithDialog::setOkButtonEnabled(bool v)
 {
-    buttonBox->button(QDialogButtonBox::Ok)->setEnabled(v);
+    //buttonBox->button(QDialogButtonBox::Ok)->setEnabled(v);
 }
 
 void OpenWithDialog::setEditors(const QStringList &editors)
 {
-    foreach (const QString &e, editors)
-        editorListWidget->addItem(e);
+    //foreach (const QString &e, editors)
+    //    editorListWidget->addItem(e);
 }
 
 int OpenWithDialog::editor() const
 {
-    return editorListWidget->currentRow();
+    return 0;
+    //return editorListWidget->currentRow();
 }
 
 void OpenWithDialog::setCurrentEditor(int index)
 {
-    editorListWidget->setCurrentRow(index);
+    //editorListWidget->setCurrentRow(index);
 }
 
 void OpenWithDialog::currentItemChanged(QListWidgetItem *current, QListWidgetItem *)
 {
-    setOkButtonEnabled(current);
+    //setOkButtonEnabled(current);
 }
