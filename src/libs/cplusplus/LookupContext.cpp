@@ -60,7 +60,7 @@ static void addNames(const Name *name, QList<const Name *> *names, bool addAllNa
     else if (const QualifiedNameId *q = name->asQualifiedNameId()) {
         addNames(q->base(), names);
         addNames(q->name(), names, addAllNames);
-    } else if (addAllNames || name->isNameId() || name->isTemplateNameId()) {
+    } else if (addAllNames || name->isNameId() || name->isTemplateNameId() || name->isAnonymousNameId()) {
         names->append(name);
     }
 }
@@ -152,47 +152,42 @@ uint qHash(const FullyQualifiedName &fullyQualifiedName)
 // LookupContext
 /////////////////////////////////////////////////////////////////////
 LookupContext::LookupContext()
-    : _control(new Control())
-    , m_expandTemplates(false)
+    : m_expandTemplates(false)
 { }
 
 LookupContext::LookupContext(Document::Ptr thisDocument,
                              const Snapshot &snapshot)
-    : _expressionDocument(Document::create(QLatin1String("<LookupContext>"))),
-      _thisDocument(thisDocument),
-      _snapshot(snapshot),
-      _control(new Control()),
-      m_expandTemplates(false)
+    : _expressionDocument(Document::create(QLatin1String("<LookupContext>")))
+    , _thisDocument(thisDocument)
+    , _snapshot(snapshot)
+    , m_expandTemplates(false)
 {
 }
 
 LookupContext::LookupContext(Document::Ptr expressionDocument,
                              Document::Ptr thisDocument,
                              const Snapshot &snapshot)
-    : _expressionDocument(expressionDocument),
-      _thisDocument(thisDocument),
-      _snapshot(snapshot),
-      _control(new Control()),
-      m_expandTemplates(false)
+    : _expressionDocument(expressionDocument)
+    , _thisDocument(thisDocument)
+    , _snapshot(snapshot)
+    , m_expandTemplates(false)
 {
 }
 
 LookupContext::LookupContext(const LookupContext &other)
-    : _expressionDocument(other._expressionDocument),
-      _thisDocument(other._thisDocument),
-      _snapshot(other._snapshot),
-      _bindings(other._bindings),
-      _control(other._control),
-      m_expandTemplates(other.m_expandTemplates)
+    : _expressionDocument(other._expressionDocument)
+    , _thisDocument(other._thisDocument)
+    , _snapshot(other._snapshot)
+    , _bindings(other._bindings)
+    , m_expandTemplates(other.m_expandTemplates)
 { }
 
-LookupContext &LookupContext::operator = (const LookupContext &other)
+LookupContext &LookupContext::operator=(const LookupContext &other)
 {
     _expressionDocument = other._expressionDocument;
     _thisDocument = other._thisDocument;
     _snapshot = other._snapshot;
     _bindings = other._bindings;
-    _control = other._control;
     m_expandTemplates = other.m_expandTemplates;
     return *this;
 }
@@ -247,11 +242,38 @@ const Name *LookupContext::minimalName(Symbol *symbol, ClassOrNamespace *target,
     return n;
 }
 
+QList<LookupItem> LookupContext::lookupByUsing(const Name *name, Scope *scope) const
+{
+    QList<LookupItem> candidates;
+    // if it is a nameId there can be a using declaration for it
+    if (name->isNameId()) {
+        for (unsigned i = 0, count = scope->memberCount(); i < count; ++i) {
+            if (UsingDeclaration *u = scope->memberAt(i)->asUsingDeclaration()) {
+                if (const QualifiedNameId *q = u->name()->asQualifiedNameId()) {
+                    if (q->name()->isEqualTo(name)) {
+                        candidates = bindings()->globalNamespace()->find(q);
+
+                        // if it is not a global scope(scope of scope is not equal 0)
+                        // then add current using declaration as a candidate
+                        if (scope->scope()) {
+                            LookupItem item;
+                            item.setDeclaration(u);
+                            item.setScope(scope);
+                            candidates.append(item);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return candidates;
+}
+
 
 QSharedPointer<CreateBindings> LookupContext::bindings() const
 {
     if (! _bindings) {
-        _bindings = QSharedPointer<CreateBindings>(new CreateBindings(_thisDocument, _snapshot, control()));
+        _bindings = QSharedPointer<CreateBindings>(new CreateBindings(_thisDocument, _snapshot));
         _bindings->setExpandTemplates(m_expandTemplates);
     }
 
@@ -261,11 +283,6 @@ QSharedPointer<CreateBindings> LookupContext::bindings() const
 void LookupContext::setBindings(QSharedPointer<CreateBindings> bindings)
 {
     _bindings = bindings;
-}
-
-QSharedPointer<Control> LookupContext::control() const
-{
-    return _control;
 }
 
 Document::Ptr LookupContext::expressionDocument() const
@@ -309,6 +326,15 @@ ClassOrNamespace *LookupContext::lookupType(const Name *name, Scope *scope,
                             return lookupType(namedTy->name(), scope);
                     }
                 }
+            } else if (UsingDeclaration *ud = m->asUsingDeclaration()) {
+                if (name->isNameId()) {
+                    if (const QualifiedNameId *q = ud->name()->asQualifiedNameId()) {
+                        if (q->name()->isEqualTo(name)) {
+                            return bindings()->globalNamespace()->lookupType(q);
+                        }
+                    }
+
+                }
             }
         }
         return lookupType(name, scope->enclosingScope());
@@ -336,8 +362,14 @@ QList<LookupItem> LookupContext::lookup(const Name *name, Scope *scope) const
         if (name->identifier() != 0 && scope->isBlock()) {
             bindings()->lookupInScope(name, scope, &candidates, /*templateId = */ 0, /*binding=*/ 0);
 
-            if (! candidates.isEmpty())
-                break; // it's a local.
+            if (! candidates.isEmpty()) {
+                // it's a local.
+                //for qualified it can be outside of the local scope
+                if (name->isQualifiedNameId())
+                    continue;
+                else
+                    break;
+            }
 
             for (unsigned i = 0; i < scope->memberCount(); ++i) {
                 if (UsingNamespaceDirective *u = scope->memberAt(i)->asUsingNamespaceDirective()) {
@@ -350,11 +382,21 @@ QList<LookupItem> LookupContext::lookup(const Name *name, Scope *scope) const
                 }
             }
 
+            candidates = lookupByUsing(name, scope);
+            if (! candidates.isEmpty())
+                return candidates;
+
         } else if (Function *fun = scope->asFunction()) {
             bindings()->lookupInScope(name, fun, &candidates, /*templateId = */ 0, /*binding=*/ 0);
 
-            if (! candidates.isEmpty())
-                break; // it's an argument or a template parameter.
+            if (! candidates.isEmpty()) {
+                // it's an argument or a template parameter.
+                //for qualified it can be outside of the local scope
+                if (name->isQualifiedNameId())
+                    continue;
+                else
+                    break;
+            }
 
             if (fun->name() && fun->name()->isQualifiedNameId()) {
                 if (ClassOrNamespace *binding = bindings()->lookupType(fun)) {
@@ -369,7 +411,7 @@ QList<LookupItem> LookupContext::lookup(const Name *name, Scope *scope) const
                 }
             }
 
-            // contunue, and look at the enclosing scope.
+            // continue, and look at the enclosing scope.
 
         } else if (ObjCMethod *method = scope->asObjCMethod()) {
             bindings()->lookupInScope(name, method, &candidates, /*templateId = */ 0, /*binding=*/ 0);
@@ -380,8 +422,14 @@ QList<LookupItem> LookupContext::lookup(const Name *name, Scope *scope) const
         } else if (Template *templ = scope->asTemplate()) {
             bindings()->lookupInScope(name, templ, &candidates, /*templateId = */ 0, /*binding=*/ 0);
 
-            if (! candidates.isEmpty())
-                return candidates;  // it's a template parameter.
+            if (! candidates.isEmpty()) {
+                // it's a template parameter.
+                //for qualified it can be outside of the local scope
+                if (name->isQualifiedNameId())
+                    continue;
+                else
+                    break;
+            }
 
         } else if (scope->asNamespace()
                    || scope->asClass()
@@ -389,8 +437,12 @@ QList<LookupItem> LookupContext::lookup(const Name *name, Scope *scope) const
             if (ClassOrNamespace *binding = bindings()->lookupType(scope))
                 candidates = binding->find(name);
 
-                if (! candidates.isEmpty())
-                    return candidates;
+            if (! candidates.isEmpty())
+                return candidates;
+
+            candidates = lookupByUsing(name, scope);
+            if (! candidates.isEmpty())
+                return candidates;
 
         } else if (scope->isObjCClass() || scope->isObjCProtocol()) {
             if (ClassOrNamespace *binding = bindings()->lookupType(scope))
@@ -624,14 +676,15 @@ void CreateBindings::lookupInScope(const Name *name, Scope *scope,
 
             if (s->asNamespaceAlias() && binding) {
                 ClassOrNamespace *targetNamespaceBinding = binding->lookupType(name);
-                if (targetNamespaceBinding && targetNamespaceBinding->symbols().size() == 1) {
+                //there can be many namespace definitions
+                if (targetNamespaceBinding && targetNamespaceBinding->symbols().size() > 0) {
                     Symbol *resolvedSymbol = targetNamespaceBinding->symbols().first();
                     item.setType(resolvedSymbol->type()); // override the type
                 }
             }
 
             if (templateId && (s->isDeclaration() || s->isFunction())) {
-                FullySpecifiedType ty = DeprecatedGenTemplateInstance::instantiate(templateId, s, _control);
+                FullySpecifiedType ty = DeprecatedGenTemplateInstance::instantiate(templateId, s, control());
                 item.setType(ty); // override the type.
             }
 
@@ -697,7 +750,7 @@ ClassOrNamespace *ClassOrNamespace::lookupType_helper(const Name *name,
     } else if (! processed->contains(this)) {
         processed->insert(this);
 
-        if (name->isNameId() || name->isTemplateNameId()) {
+        if (name->isNameId() || name->isTemplateNameId() || name->isAnonymousNameId()) {
             flush();
 
             foreach (Symbol *s, symbols()) {
@@ -779,9 +832,25 @@ ClassOrNamespace *ClassOrNamespace::findSpecializationWithPointer(const Template
 ClassOrNamespace *ClassOrNamespace::nestedType(const Name *name, ClassOrNamespace *origin)
 {
     Q_ASSERT(name != 0);
-    Q_ASSERT(name->isNameId() || name->isTemplateNameId());
+    Q_ASSERT(name->isNameId() || name->isTemplateNameId() || name->isAnonymousNameId());
 
     const_cast<ClassOrNamespace *>(this)->flush();
+
+    const AnonymousNameId *anonymousNameId = name->asAnonymousNameId();
+    if (anonymousNameId) {
+        QHash<const AnonymousNameId *, ClassOrNamespace *>::const_iterator cit
+                = _anonymouses.find(anonymousNameId);
+        if (cit != _anonymouses.end()) {
+            return cit.value();
+        } else {
+            ClassOrNamespace *newAnonymous = _factory->allocClassOrNamespace(this);
+#ifdef DEBUG_LOOKUP
+            newAnonymous->_name = anonymousNameId;
+#endif // DEBUG_LOOKUP
+            _anonymouses[anonymousNameId] = newAnonymous;
+            return newAnonymous;
+        }
+    }
 
     Table::const_iterator it = _classOrNamespaces.find(name);
     if (it == _classOrNamespaces.end())
@@ -917,6 +986,7 @@ ClassOrNamespace *ClassOrNamespace::nestedType(const Name *name, ClassOrNamespac
 
                 foreach (Symbol *s, reference->symbols()) {
                     Symbol *clone = cloner.symbol(s, &subst);
+                    clone->setScope(s->scope());
                     instantiation->_symbols.append(clone);
 #ifdef DEBUG_LOOKUP
                     Overview oo;oo.showFunctionSignatures = true;
@@ -1070,6 +1140,7 @@ void ClassOrNamespace::NestedClassInstantiator::instantiate(ClassOrNamespace *en
 
             foreach (Symbol *s, nestedClassOrNamespace->_symbols) {
                 Symbol *clone = _cloner.symbol(s, &_subst);
+                clone->setScope(s->scope());
                 nestedClassOrNamespaceInstantiation->_symbols.append(clone);
             }
         }
@@ -1107,29 +1178,26 @@ bool ClassOrNamespace::NestedClassInstantiator::isInstantiateNestedClassNeeded(c
 bool ClassOrNamespace::NestedClassInstantiator::containsTemplateType(Declaration *declaration) const
 {
     Type *memberType = declaration->type().type();
-    NamedType *memberNamedType = findMemberNamedType(memberType);
-    if (memberNamedType) {
-        const Name *name = memberNamedType->name();
-        if (_subst.contains(name))
-            return true;
-    }
-    return false;
+    NamedType *namedType = findNamedType(memberType);
+    return namedType && _subst.contains(namedType->name());
 }
 
-bool ClassOrNamespace::NestedClassInstantiator::containsTemplateType(Function * /*function*/) const
+bool ClassOrNamespace::NestedClassInstantiator::containsTemplateType(Function *function) const
 {
-    //TODO: make implementation
-    return false;
+    Type *returnType = function->returnType().type();
+    NamedType *namedType = findNamedType(returnType);
+    return namedType && _subst.contains(namedType->name());
+    //TODO: in future we will need also check function arguments, for now returned value is enough
 }
 
-NamedType *ClassOrNamespace::NestedClassInstantiator::findMemberNamedType(Type *memberType) const
+NamedType *ClassOrNamespace::NestedClassInstantiator::findNamedType(Type *memberType) const
 {
     if (NamedType *namedType = memberType->asNamedType())
         return namedType;
     else if (PointerType *pointerType = memberType->asPointerType())
-        return findMemberNamedType(pointerType->elementType().type());
+        return findNamedType(pointerType->elementType().type());
     else if (ReferenceType *referenceType = memberType->asReferenceType())
-        return findMemberNamedType(referenceType->elementType().type());
+        return findNamedType(referenceType->elementType().type());
 
     return 0;
 }
@@ -1183,7 +1251,7 @@ ClassOrNamespace *ClassOrNamespace::findOrCreateType(const Name *name, ClassOrNa
 
         return findOrCreateType(q->base(), origin)->findOrCreateType(q->name(), origin);
 
-    } else if (name->isNameId() || name->isTemplateNameId()) {
+    } else if (name->isNameId() || name->isTemplateNameId() || name->isAnonymousNameId()) {
         ClassOrNamespace *e = nestedType(name, origin);
 
         if (! e) {
@@ -1200,8 +1268,10 @@ ClassOrNamespace *ClassOrNamespace::findOrCreateType(const Name *name, ClassOrNa
     return 0;
 }
 
-CreateBindings::CreateBindings(Document::Ptr thisDocument, const Snapshot &snapshot, QSharedPointer<Control> control)
-    : _snapshot(snapshot), _control(control), _expandTemplates(false)
+CreateBindings::CreateBindings(Document::Ptr thisDocument, const Snapshot &snapshot)
+    : _snapshot(snapshot)
+    , _control(QSharedPointer<Control>(new Control))
+    , _expandTemplates(false)
 {
     _globalNamespace = allocClassOrNamespace(/*parent = */ 0);
     _currentClassOrNamespace = _globalNamespace;
@@ -1260,11 +1330,6 @@ void CreateBindings::process(Symbol *s, ClassOrNamespace *classOrNamespace)
 void CreateBindings::process(Symbol *symbol)
 {
     _currentClassOrNamespace->addTodo(symbol);
-}
-
-QSharedPointer<Control> CreateBindings::control() const
-{
-    return _control;
 }
 
 ClassOrNamespace *CreateBindings::allocClassOrNamespace(ClassOrNamespace *parent)
@@ -1452,7 +1517,7 @@ bool CreateBindings::visit(NamespaceAlias *a)
         return false;
 
     } else if (ClassOrNamespace *e = _currentClassOrNamespace->lookupType(a->namespaceName())) {
-        if (a->name()->isNameId() || a->name()->isTemplateNameId())
+        if (a->name()->isNameId() || a->name()->isTemplateNameId() || a->name()->isAnonymousNameId())
             _currentClassOrNamespace->addNestedType(a->name(), e);
 
     } else if (false) {

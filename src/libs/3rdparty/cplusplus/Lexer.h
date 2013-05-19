@@ -24,7 +24,6 @@
 #include "CPlusPlusForwardDeclarations.h"
 #include "Token.h"
 
-
 namespace CPlusPlus {
 
 class CPLUSPLUS_EXPORT Lexer
@@ -43,7 +42,7 @@ public:
     Lexer(const char *firstChar, const char *lastChar);
     ~Lexer();
 
-    Control *control() const;
+    Control *control() const { return _control; }
     TranslationUnit *translationUnit() const;
 
     bool qtMocRunEnabled() const;
@@ -99,13 +98,9 @@ private:
 
     inline void yyinp()
     {
-        if (++_currentChar == _lastChar)
-            _yychar = 0;
-        else {
-            _yychar = *_currentChar;
-            if (_yychar == '\n')
-                pushLineStartOffset();
-        }
+        _yychar = *++_currentChar;
+        if (CPLUSPLUS_UNLIKELY(_yychar == '\n'))
+            pushLineStartOffset();
     }
 
     void pushLineStartOffset();
@@ -122,6 +117,7 @@ private:
     };
 
     TranslationUnit *_translationUnit;
+    Control *_control;
     const char *_firstChar;
     const char *_currentChar;
     const char *_lastChar;

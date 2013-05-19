@@ -57,6 +57,8 @@ FindUsages::FindUsages(const QByteArray &originalSource, Document::Ptr doc, cons
 {
     _snapshot.insert(_doc);
     typeofExpression.init(_doc, _snapshot, _context.bindings());
+
+    prepareLines(_originalSource);
 }
 
 FindUsages::FindUsages(const LookupContext &context)
@@ -71,6 +73,8 @@ FindUsages::FindUsages(const LookupContext &context)
       _currentScope(0)
 {
     typeofExpression.init(_doc, _snapshot, _context.bindings());
+
+    prepareLines(_originalSource);
 }
 
 QList<Usage> FindUsages::usages() const
@@ -165,7 +169,11 @@ void FindUsages::reportResult(unsigned tokenIndex)
 
     unsigned line, col;
     getTokenStartPosition(tokenIndex, &line, &col);
-    const QString lineText = matchingLine(tk);
+    QString lineText;
+    if (line < _sourceLineEnds.size())
+        lineText = fetchLine(line);
+    else
+        lineText = matchingLine(tk);
 
     if (col)
         --col;  // adjust the column position.
@@ -202,7 +210,7 @@ bool FindUsages::checkCandidates(const QList<LookupItem> &candidates) const
                 if (s->enclosingScope()->isTemplate()) {
                     if (s->enclosingScope()->enclosingScope() != _declSymbol->enclosingScope())
                         return false;
-                } else if (s->enclosingScope() != _declSymbol->enclosingScope()) {
+                } else if (! s->isUsingDeclaration() && s->enclosingScope() != _declSymbol->enclosingScope()) {
                     return false;
                 }
             }
@@ -2133,3 +2141,28 @@ bool FindUsages::visit(ArrayDeclaratorAST *ast)
     // unsigned rbracket_token = ast->rbracket_token;
     return false;
 }
+
+void FindUsages::prepareLines(const QByteArray &bytes)
+{
+    _sourceLineEnds.reserve(1000);
+    const char *s = bytes.constData();
+    _sourceLineEnds.push_back(s - 1); // we start counting at line 1, so line 0 is always empty.
+
+    for (; *s; ++s)
+        if (*s == '\n')
+            _sourceLineEnds.push_back(s);
+    if (s != _sourceLineEnds.back() + 1) // no newline at the end of the file
+        _sourceLineEnds.push_back(s);
+}
+
+QString FindUsages::fetchLine(unsigned lineNr) const
+{
+    Q_ASSERT(lineNr < _sourceLineEnds.size());
+    if (lineNr == 0)
+        return QString();
+
+    const char *start = _sourceLineEnds.at(lineNr - 1) + 1;
+    const char *end = _sourceLineEnds.at(lineNr);
+    return QString::fromUtf8(start, end - start);
+}
+

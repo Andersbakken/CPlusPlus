@@ -21,9 +21,8 @@
 #include "Names.h"
 #include "NameVisitor.h"
 #include "Literals.h"
-#include <cstring>
-#include <cassert>
 #include <algorithm>
+#include <cstring>
 
 using namespace CPlusPlus;
 
@@ -249,3 +248,29 @@ bool SelectorNameId::isEqualTo(const Name *other) const
     return true;
 }
 
+AnonymousNameId::AnonymousNameId(unsigned classTokenIndex)
+    : _classTokenIndex(classTokenIndex)
+{ }
+
+AnonymousNameId::~AnonymousNameId()
+{ }
+
+unsigned AnonymousNameId::classTokenIndex() const
+{
+    return _classTokenIndex;
+}
+
+void AnonymousNameId::accept0(NameVisitor *visitor) const
+{ visitor->visit(this); }
+
+const Identifier *AnonymousNameId::identifier() const
+{ return 0; }
+
+bool AnonymousNameId::isEqualTo(const Name *other) const
+{
+    if (other) {
+        const AnonymousNameId *c = other->asAnonymousNameId();
+        return (c && this->_classTokenIndex == c->_classTokenIndex);
+    }
+    return false;
+}

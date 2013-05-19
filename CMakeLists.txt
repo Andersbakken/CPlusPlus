@@ -1,21 +1,29 @@
 cmake_minimum_required(VERSION 2.8)
-find_package(Qt4 REQUIRED)
+find_package(Qt4 REQUIRED QtCore QtGui QtNetwork)
 include(${QT_USE_FILE})
 add_definitions(${QT_DEFINITIONS} -DNDEBUG)
 
 set(CPLUSPLUS_MOCABLE_HEADERS
     src/libs/cplusplus/OverviewModel.h
-    src/plugins/cpptools/ModelManagerInterface.h
+    src/plugins/cpptools/cppmodelmanagerinterface.h
     src/plugins/cpptools/cppfindreferences.h
     src/plugins/cpptools/cppindexingsupport.h
-    src/plugins/cpptools/cppmodelmanager.h)
+    src/plugins/cpptools/cppmodelmanager.h
+    src/plugins/projectexplorer/buildconfiguration.h
+    src/plugins/projectexplorer/buildsteplist.h
+    src/plugins/projectexplorer/kitmanager.h
+    src/plugins/projectexplorer/projectconfiguration.h
+    src/plugins/projectexplorer/session.h
+    src/plugins/projectexplorer/target.h)
 
 qt4_wrap_cpp(CPLUSPLUS_MOCS ${CPLUSPLUS_MOCABLE_HEADERS})
 
 include_directories(src/libs/3rdparty
                     src/libs/3rdparty/cplusplus
                     src/libs
-                    src/plugins/cpptools)
+		    src/plugins
+		    src/plugins/projectexplorer/customwizard
+		    src/plugins/cpptools)
 
 add_library(CPlusPlus STATIC
             src/libs/3rdparty/cplusplus/AST.cpp
@@ -84,13 +92,26 @@ add_library(CPlusPlus STATIC
             src/libs/languageutils/componentversion.cpp
             src/libs/languageutils/fakemetaobject.cpp
             src/plugins/cpptools/builtinindexingsupport.cpp
-            src/plugins/cpptools/cppfindreferences.cpp
+	    src/plugins/cpptools/cpppreprocessor.cpp
+	    src/plugins/cpptools/cppprojectfile.cpp
+	    src/plugins/cpptools/cppfindreferences.cpp
             src/plugins/cpptools/cppindexingsupport.cpp
             src/plugins/cpptools/cppmodelmanager.cpp
-            src/plugins/cpptools/ModelManagerInterface.cpp
+	    src/plugins/cpptools/cppmodelmanagerinterface.cpp
             src/plugins/cpptools/searchsymbols.cpp
             src/plugins/cpptools/symbolfinder.cpp
-            src/libs/utils/textfileformat.cpp
+	    src/plugins/projectexplorer/buildconfiguration.cpp
+	    src/plugins/projectexplorer/buildsteplist.cpp
+	    src/plugins/projectexplorer/kit.cpp
+	    src/plugins/projectexplorer/kitmanager.cpp
+	    src/plugins/projectexplorer/project.cpp
+	    src/plugins/projectexplorer/projectconfiguration.cpp
+	    src/plugins/projectexplorer/projectexplorer.cpp
+	    src/plugins/projectexplorer/session.cpp
+	    src/plugins/projectexplorer/target.cpp
+	    src/plugins/projectexplorer/task.cpp
+	    src/plugins/projectexplorer/toolchain.cpp
+	    src/libs/utils/textfileformat.cpp
             src/libs/utils/fileutils.cpp
             src/libs/utils/savefile.cpp
             src/libs/utils/qtcassert.cpp

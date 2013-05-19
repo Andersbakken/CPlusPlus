@@ -286,6 +286,10 @@ protected:
     virtual bool visit(ArrayDeclaratorAST *ast);
 
 private:
+    void prepareLines(const QByteArray &bytes);
+    QString fetchLine(unsigned lineNr) const;
+
+private:
     const Identifier *_id;
     Symbol *_declSymbol;
     QList<const Name *> _declSymbolFullyQualifiedName;
@@ -293,6 +297,7 @@ private:
     Snapshot _snapshot;
     LookupContext _context;
     const QByteArray _originalSource;
+    std::vector<const char *> _sourceLineEnds;
     QByteArray _source;
     QList<int> _references;
     QList<Usage> _usages;

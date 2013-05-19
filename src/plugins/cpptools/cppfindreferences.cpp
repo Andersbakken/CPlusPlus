@@ -30,33 +30,21 @@
 #include "cppfindreferences.h"
 
 #include "cpptoolsconstants.h"
-#include "ModelManagerInterface.h"
+#include "cppmodelmanagerinterface.h"
 
-#include <utils/filesearch.h>
-#include <utils/fileutils.h>
+#include <coreplugin/icore.h>
+#include <coreplugin/progressmanager/futureprogress.h>
+#include <coreplugin/progressmanager/progressmanager.h>
+#include <texteditor/basefilefind.h>
+#include <texteditor/basetexteditor.h>
+
 #include <utils/qtcassert.h>
 #include <utils/runextensions.h>
 #include <utils/textfileformat.h>
 
-#include <cplusplus/AST.h>
-#include <cplusplus/ASTVisitor.h>
-#include <cplusplus/Control.h>
-#include <cplusplus/CppDocument.h>
-#include <cplusplus/FindUsages.h>
-#include <cplusplus/Literals.h>
-#include <cplusplus/Names.h>
 #include <cplusplus/Overview.h>
-#include <cplusplus/Scope.h>
-#include <cplusplus/Symbols.h>
-#include <cplusplus/TranslationUnit.h>
-
-#include <QTime>
-#include <QTimer>
-#include <QtConcurrentRun>
 #include <QtConcurrentMap>
 #include <QDir>
-#include <QApplication>
-#include <QTextCodec>
 
 #include <functional>
 
@@ -73,8 +61,7 @@ static QString getSource(const QString &fileName,
         QString fileContents;
         Utils::TextFileFormat format;
         QString error;
-        //QTextCodec *defaultCodec = Core::EditorManager::instance()->defaultTextCodec();
-        QTextCodec *defaultCodec = QTextCodec::codecForLocale(); // ### ???
+        QTextCodec *defaultCodec = Core::EditorManager::instance()->defaultTextCodec();
         Utils::TextFileFormat::ReadResult result = Utils::TextFileFormat::readFile(
                     fileName, defaultCodec, &fileContents, &format, &error);
         if (result != Utils::TextFileFormat::ReadSuccess)
@@ -187,7 +174,6 @@ QList<int> CppFindReferences::references(Symbol *symbol, const LookupContext &co
     return references;
 }
 
-/*
 static void find_helper(QFutureInterface<Usage> &future,
                         const CppModelManagerInterface::WorkingCopy workingCopy,
                         const LookupContext context,
@@ -230,7 +216,6 @@ static void find_helper(QFutureInterface<Usage> &future,
     QThreadPool::globalInstance()->reserveThread();
     future.setProgressValue(files.size());
 }
-*/
 
 void CppFindReferences::findUsages(CPlusPlus::Symbol *symbol,
                                    const CPlusPlus::LookupContext &context)
@@ -238,12 +223,11 @@ void CppFindReferences::findUsages(CPlusPlus::Symbol *symbol,
     findUsages(symbol, context, QString(), false);
 }
 
-void CppFindReferences::findUsages(CPlusPlus::Symbol */*symbol*/,
-                                   const CPlusPlus::LookupContext &/*context*/,
-                                   const QString &/*replacement*/,
-                                   bool /*replace*/)
+void CppFindReferences::findUsages(CPlusPlus::Symbol *symbol,
+                                   const CPlusPlus::LookupContext &context,
+                                   const QString &replacement,
+                                   bool replace)
 {
-    /*
     Overview overview;
     Find::SearchResult *search = Find::SearchResultWindow::instance()->startNewSearch(tr("C++ Usages:"),
                                                 QString(),
@@ -262,7 +246,6 @@ void CppFindReferences::findUsages(CPlusPlus::Symbol */*symbol*/,
     parameters.symbol = symbol;
     search->setUserData(qVariantFromValue(parameters));
     findAll_helper(search);
-    */
 }
 
 void CppFindReferences::renameUsages(CPlusPlus::Symbol *symbol, const CPlusPlus::LookupContext &context,
@@ -275,7 +258,6 @@ void CppFindReferences::renameUsages(CPlusPlus::Symbol *symbol, const CPlusPlus:
     }
 }
 
-/*
 void CppFindReferences::findAll_helper(Find::SearchResult *search)
 {
     CppFindReferencesParameters parameters = search->userData().value<CppFindReferencesParameters>();
@@ -300,9 +282,7 @@ void CppFindReferences::findAll_helper(Find::SearchResult *search)
 
     connect(progress, SIGNAL(clicked()), search, SLOT(popup()));
 }
-*/
 
-/*
 void CppFindReferences::onReplaceButtonClicked(const QString &text,
                                                const QList<Find::SearchResultItem> &items,
                                                bool preserveCase)
@@ -313,11 +293,9 @@ void CppFindReferences::onReplaceButtonClicked(const QString &text,
         Find::SearchResultWindow::instance()->hide();
     }
 }
-*/
 
 void CppFindReferences::searchAgain()
 {
-    /*
     Find::SearchResult *search = qobject_cast<Find::SearchResult *>(sender());
     CppFindReferencesParameters parameters = search->userData().value<CppFindReferencesParameters>();
     Snapshot snapshot = CppModelManagerInterface::instance()->snapshot();
@@ -328,7 +306,6 @@ void CppFindReferences::searchAgain()
     }
     search->setUserData(qVariantFromValue(parameters));
     findAll_helper(search);
-    */
 }
 
 static QByteArray typeId(Symbol *symbol)
@@ -482,9 +459,8 @@ bool CppFindReferences::findSymbol(CppFindReferencesParameters *parameters,
     return false;
 }
 
-void CppFindReferences::displayResults(int /*first*/, int /*last*/)
+void CppFindReferences::displayResults(int first, int last)
 {
-    /*
     QFutureWatcher<Usage> *watcher = static_cast<QFutureWatcher<Usage> *>(sender());
     Find::SearchResult *search = m_watchers.value(watcher);
     if (!search) {
@@ -500,44 +476,36 @@ void CppFindReferences::displayResults(int /*first*/, int /*last*/)
                           result.col,
                           result.len);
     }
-    */
 }
 
 void CppFindReferences::searchFinished()
 {
-    /*
     QFutureWatcher<Usage> *watcher = static_cast<QFutureWatcher<Usage> *>(sender());
     Find::SearchResult *search = m_watchers.value(watcher);
     if (search)
         search->finishSearch(watcher->isCanceled());
     m_watchers.remove(watcher);
-    */
 }
 
 void CppFindReferences::cancel()
 {
-    /*
     Find::SearchResult *search = qobject_cast<Find::SearchResult *>(sender());
     QTC_ASSERT(search, return);
     QFutureWatcher<Usage> *watcher = m_watchers.key(search);
     QTC_ASSERT(watcher, return);
     watcher->cancel();
-    */
 }
 
-void CppFindReferences::setPaused(bool /*paused*/)
+void CppFindReferences::setPaused(bool paused)
 {
-    /*
     Find::SearchResult *search = qobject_cast<Find::SearchResult *>(sender());
     QTC_ASSERT(search, return);
     QFutureWatcher<Usage> *watcher = m_watchers.key(search);
     QTC_ASSERT(watcher, return);
     if (!paused || watcher->isRunning()) // guard against pausing when the search is finished
         watcher->setPaused(paused);
-    */
 }
 
-/*
 void CppFindReferences::openEditor(const Find::SearchResultItem &item)
 {
     if (item.path.size() > 0) {
@@ -550,7 +518,6 @@ void CppFindReferences::openEditor(const Find::SearchResultItem &item)
                                         Core::Id(), Core::EditorManager::ModeSwitch);
     }
 }
-*/
 
 
 namespace {
@@ -629,7 +596,6 @@ restart_search:
 
 } // end of anonymous namespace
 
-/*
 static void findMacroUses_helper(QFutureInterface<Usage> &future,
                                  const CppModelManagerInterface::WorkingCopy workingCopy,
                                  const Snapshot snapshot,
@@ -654,16 +620,14 @@ static void findMacroUses_helper(QFutureInterface<Usage> &future,
     QThreadPool::globalInstance()->reserveThread();
     future.setProgressValue(files.size());
 }
-*/
 
 void CppFindReferences::findMacroUses(const Macro &macro)
 {
     findMacroUses(macro, QString(), false);
 }
 
-void CppFindReferences::findMacroUses(const Macro &/*macro*/, const QString &/*replacement*/, bool /*replace*/)
+void CppFindReferences::findMacroUses(const Macro &macro, const QString &replacement, bool replace)
 {
-    /*
     Find::SearchResult *search = Find::SearchResultWindow::instance()->startNewSearch(
                 tr("C++ Macro Usages:"),
                 QString(),
@@ -703,7 +667,6 @@ void CppFindReferences::findMacroUses(const Macro &/*macro*/, const QString &/*r
     Core::FutureProgress *progress = progressManager->addTask(result, tr("Searching"),
                                                               QLatin1String(CppTools::Constants::TASK_SEARCH));
     connect(progress, SIGNAL(clicked()), search, SLOT(popup()));
-    */
 }
 
 void CppFindReferences::renameMacroUses(const Macro &macro, const QString &replacement)
@@ -738,7 +701,6 @@ void CppFindReferences::setDependencyTable(const CPlusPlus::DependencyTable &new
     m_deps = newTable;
 }
 
-/*
 void CppFindReferences::createWatcher(const QFuture<Usage> &future, Find::SearchResult *search)
 {
     QFutureWatcher<Usage> *watcher = new QFutureWatcher<Usage>();
@@ -748,4 +710,3 @@ void CppFindReferences::createWatcher(const QFuture<Usage> &future, Find::Search
     m_watchers.insert(watcher, search);
     watcher->setFuture(future);
 }
-*/

@@ -31,31 +31,27 @@
 #define CPPMODELMANAGER_H
 
 #include "cpptools_global.h"
-#include "cpptoolsconstants.h"
-#include "ModelManagerInterface.h"
+#include "cppmodelmanagerinterface.h"
 
-#include <cplusplus/CppDocument.h>
-#include <cplusplus/PreprocessorClient.h>
-#include <cplusplus/PreprocessorEnvironment.h>
-#include <cplusplus/pp-engine.h>
+#include <projectexplorer/project.h>
+#include <texteditor/basetexteditor.h>
 
 #include <QHash>
-#include <QFutureInterface>
-#include <QFutureSynchronizer>
 #include <QMutex>
-#include <QTimer>
-#include <QTextEdit> // for QTextEdit::ExtraSelection
 
-namespace CPlusPlus { class ParseManager; }
+namespace Core { class IEditor; }
+
+namespace TextEditor {
+class BaseTextEditorWidget;
+} // namespace TextEditor
 
 namespace CppTools {
 
-class CppCompletionSupportFactory;
+class CppEditorSupport;
 class CppHighlightingSupportFactory;
 
 namespace Internal {
 
-class CppPreprocessor;
 class CppFindReferences;
 
 class CPPTOOLS_EXPORT CppModelManager : public CppTools::CppModelManagerInterface
@@ -74,14 +70,23 @@ public:
     virtual QFuture<void> updateSourceFiles(const QStringList &sourceFiles);
     virtual WorkingCopy workingCopy() const;
 
+    virtual QList<ProjectInfo> projectInfos() const;
+    virtual ProjectInfo projectInfo(ProjectExplorer::Project *project) const;
+    virtual void updateProjectInfo(const ProjectInfo &pinfo);
+    virtual QList<CppTools::ProjectPart::Ptr> projectPart(const QString &fileName) const;
+
     virtual CPlusPlus::Snapshot snapshot() const;
     virtual Document::Ptr document(const QString &fileName) const;
     bool replaceDocument(Document::Ptr newDoc);
     virtual void GC();
 
-    void removeFromSnapshot(const QString& fileName);
+    virtual bool isCppEditor(Core::IEditor *editor) const;
 
     void emitDocumentUpdated(CPlusPlus::Document::Ptr doc);
+
+    virtual void addEditorSupport(AbstractEditorSupport *editorSupport);
+    virtual void removeEditorSupport(AbstractEditorSupport *editorSupport);
+    virtual CppEditorSupport *cppEditorSupport(TextEditor::BaseTextEditor *editor);
 
     virtual QList<int> references(CPlusPlus::Symbol *symbol, const CPlusPlus::LookupContext &context);
 
@@ -92,17 +97,25 @@ public:
     virtual void findMacroUsages(const CPlusPlus::Macro &macro);
     virtual void renameMacroUsages(const CPlusPlus::Macro &macro, const QString &replacement);
 
-    virtual void setExtraDiagnostics(const QString &fileName, int key,
+    virtual void setExtraDiagnostics(const QString &fileName, const QString &key,
                                      const QList<Document::DiagnosticMessage> &diagnostics);
-    virtual QList<Document::DiagnosticMessage> extraDiagnostics(
-            const QString &fileName, int key = AllExtraDiagnostics) const;
 
     void finishedRefreshingSourceFiles(const QStringList &files);
 
-    //virtual void setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider);
+    virtual CppCompletionSupport *completionSupport(Core::IEditor *editor) const;
+    virtual void setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider);
+
+    virtual CppHighlightingSupport *highlightingSupport(Core::IEditor *editor) const;
+    virtual void setHighlightingSupportFactory(CppHighlightingSupportFactory *highlightingFactory);
 
     virtual void setIndexingSupport(CppIndexingSupport *indexingSupport);
     virtual CppIndexingSupport *indexingSupport();
+
+    QStringList projectFiles()
+    {
+        ensureUpdated();
+        return m_projectFiles;
+    }
 
     QStringList includePaths()
     {
@@ -126,18 +139,22 @@ Q_SIGNALS:
     void aboutToRemoveFiles(const QStringList &files);
 
 public Q_SLOTS:
+    void editorAboutToClose(Core::IEditor *editor);
     virtual void updateModifiedSourceFiles();
 
 private Q_SLOTS:
     // this should be executed in the GUI thread.
-    void onDocumentUpdated(CPlusPlus::Document::Ptr doc);
-    void onExtraDiagnosticsUpdated(const QString &fileName);
+    void onAboutToRemoveProject(ProjectExplorer::Project *project);
+    void onAboutToUnloadSession();
+    void onCoreAboutToClose();
+    void onProjectAdded(ProjectExplorer::Project *project);
 
 private:
     void replaceSnapshot(const CPlusPlus::Snapshot &newSnapshot);
     WorkingCopy buildWorkingCopyList();
 
     void ensureUpdated();
+    QStringList internalProjectFiles() const;
     QStringList internalIncludePaths() const;
     QStringList internalFrameworkPaths() const;
     QByteArray internalDefinedMacros() const;
@@ -149,98 +166,38 @@ private:
     static CppModelManager *m_modelManagerInstance;
 
 private:
+    // snapshot
+    mutable QMutex m_snapshotMutex;
     CPlusPlus::Snapshot m_snapshot;
 
-    // cache
+    bool m_enableGC;
+
+    // project integration
+    mutable QMutex m_projectMutex;
+    QMap<ProjectExplorer::Project *, ProjectInfo> m_projects;
+    QMap<QString, QList<CppTools::ProjectPart::Ptr> > m_srcToProjectPart;
+    // cached/calculated from the projects and/or their project-parts
     bool m_dirty;
+    QStringList m_projectFiles;
     QStringList m_includePaths;
     QStringList m_frameworkPaths;
     QByteArray m_definedMacros;
 
-    mutable QMutex m_mutex;
-    mutable QMutex m_protectSnapshot;
+    // editor integration
+    mutable QMutex m_editorSupportMutex;
+    QMap<TextEditor::BaseTextEditor *, CppEditorSupport *> m_editorSupport;
+
+    QSet<AbstractEditorSupport *> m_addtionalEditorSupport;
 
     CppFindReferences *m_findReferences;
     bool m_indexerEnabled;
 
-    mutable QMutex m_protectExtraDiagnostics;
-    QHash<QString, QHash<int, QList<Document::DiagnosticMessage> > > m_extraDiagnostics;
-
-    //CppCompletionAssistProvider *m_completionAssistProvider;
-    //CppCompletionAssistProvider *m_completionFallback;
+    CppCompletionAssistProvider *m_completionAssistProvider;
+    CppCompletionAssistProvider *m_completionFallback;
+    CppHighlightingSupportFactory *m_highlightingFactory;
+    CppHighlightingSupportFactory *m_highlightingFallback;
     CppIndexingSupport *m_indexingSupporter;
     CppIndexingSupport *m_internalIndexingSupport;
-};
-
-class CPPTOOLS_EXPORT CppPreprocessor: public CPlusPlus::Client
-{
-    Q_DISABLE_COPY(CppPreprocessor)
-
-public:
-    CppPreprocessor(QPointer<CppModelManager> modelManager, bool dumpFileNameWhileParsing = false);
-    virtual ~CppPreprocessor();
-
-    void setRevision(unsigned revision);
-    void setWorkingCopy(const CppTools::CppModelManagerInterface::WorkingCopy &workingCopy);
-    void setIncludePaths(const QStringList &includePaths);
-    void addDefinitions(const QStringList &definitions);
-    void setFrameworkPaths(const QStringList &frameworkPaths);
-    void addFrameworkPath(const QString &frameworkPath);
-    void setTodo(const QStringList &files);
-
-    void run(const QString &fileName);
-    void removeFromCache(const QString &fileName);
-
-    void resetEnvironment();
-    static QString cleanPath(const QString &path);
-
-    const QSet<QString> &todo() const
-    { return m_todo; }
-
-    CppModelManager *modelManager() const
-    { return m_modelManager.data(); }
-
-    void mergeEnvironment(CPlusPlus::Document::Ptr doc);
-
-protected:
-    CPlusPlus::Document::Ptr switchDocument(CPlusPlus::Document::Ptr doc);
-
-    void getFileContents(const QString &absoluteFilePath, QString *contents, unsigned *revision) const;
-    bool checkFile(const QString &absoluteFilePath) const;
-    QString resolveFile(const QString &fileName, IncludeType type);
-    QString resolveFile_helper(const QString &fileName, IncludeType type);
-
-    virtual void macroAdded(const CPlusPlus::Macro &macro);
-    virtual void passedMacroDefinitionCheck(unsigned offset, unsigned line,
-                                            const CPlusPlus::Macro &macro);
-    virtual void failedMacroDefinitionCheck(unsigned offset, const CPlusPlus::ByteArrayRef &name);
-    virtual void notifyMacroReference(unsigned offset, unsigned line,
-                                      const CPlusPlus::Macro &macro);
-    virtual void startExpandingMacro(unsigned offset,
-                                     unsigned line,
-                                     const CPlusPlus::Macro &macro,
-                                     const QVector<CPlusPlus::MacroArgumentReference> &actuals);
-    virtual void stopExpandingMacro(unsigned offset, const CPlusPlus::Macro &macro);
-    virtual void markAsIncludeGuard(const QByteArray &macroName);
-    virtual void startSkippingBlocks(unsigned offset);
-    virtual void stopSkippingBlocks(unsigned offset);
-    virtual void sourceNeeded(unsigned line, QString &fileName, IncludeType type);
-
-private:
-    CPlusPlus::Snapshot m_snapshot;
-    QPointer<CppModelManager> m_modelManager;
-    bool m_dumpFileNameWhileParsing;
-    CPlusPlus::Environment m_env;
-    CPlusPlus::Preprocessor m_preprocess;
-    QStringList m_includePaths;
-    CppTools::CppModelManagerInterface::WorkingCopy m_workingCopy;
-    QStringList m_frameworkPaths;
-    QSet<QString> m_included;
-    CPlusPlus::Document::Ptr m_currentDoc;
-    QSet<QString> m_todo;
-    QSet<QString> m_processed;
-    unsigned m_revision;
-    QHash<QString, QString> m_fileNameCache;
 };
 
 } // namespace Internal

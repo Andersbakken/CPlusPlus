@@ -22,13 +22,16 @@
 #include "Control.h"
 #include "TranslationUnit.h"
 #include "Literals.h"
+
+#include "cppassert.h"
+
 #include <cctype>
-#include <cassert>
 
 using namespace CPlusPlus;
 
 Lexer::Lexer(TranslationUnit *unit)
     : _translationUnit(unit),
+      _control(unit->control()),
       _state(State_Default),
       _flags(0),
       _currentLine(1)
@@ -40,6 +43,7 @@ Lexer::Lexer(TranslationUnit *unit)
 
 Lexer::Lexer(const char *firstChar, const char *lastChar)
     : _translationUnit(0),
+      _control(0),
       _state(State_Default),
       _flags(0),
       _currentLine(1)
@@ -53,14 +57,6 @@ Lexer::~Lexer()
 
 TranslationUnit *Lexer::translationUnit() const
 { return _translationUnit; }
-
-Control *Lexer::control() const
-{
-    if (_translationUnit)
-        return _translationUnit->control();
-
-    return 0;
-}
 
 void Lexer::setSource(const char *firstChar, const char *lastChar)
 {
@@ -216,7 +212,7 @@ void Lexer::scan_helper(Token *tok)
     case '\\':
         while (_yychar != '\n' && std::isspace(_yychar))
             yyinp();
-        // ### assert(! _yychar || _yychar == '\n');
+        // ### CPP_CHECK(! _yychar || _yychar == '\n');
         if (_yychar == '\n') {
             tok->f.joined = true;
             tok->f.newline = false;
@@ -284,7 +280,7 @@ void Lexer::scan_helper(Token *tok)
             tok->f.kind = T_DOT_STAR;
         } else if (_yychar == '.') {
             yyinp();
-            // ### assert(_yychar);
+            // ### CPP_CHECK(_yychar);
             if (_yychar == '.') {
                 yyinp();
                 tok->f.kind = T_DOT_DOT_DOT;
@@ -298,7 +294,7 @@ void Lexer::scan_helper(Token *tok)
                     yyinp();
                     if (_yychar == '-' || _yychar == '+') {
                         yyinp();
-                        // ### assert(std::isdigit(_yychar));
+                        // ### CPP_CHECK(std::isdigit(_yychar));
                     }
                 } else if (std::isalnum(_yychar) || _yychar == '.') {
                     yyinp();
@@ -503,7 +499,7 @@ void Lexer::scan_helper(Token *tok)
             while (_yychar && _yychar != '>')
                 yyinp();
             int yylen = _currentChar - yytext;
-            // ### assert(_yychar == '>');
+            // ### CPP_CHECK(_yychar == '>');
             if (_yychar == '>')
                 yyinp();
             if (control())
@@ -715,7 +711,7 @@ void Lexer::scanCharLiteral(Token *tok, unsigned char hint)
 
 void Lexer::scanUntilQuote(Token *tok, unsigned char quote)
 {
-    assert(quote == '"' || quote == '\'');
+    CPP_CHECK(quote == '"' || quote == '\'');
 
     const char *yytext = _currentChar;
     while (_yychar
@@ -746,7 +742,7 @@ void Lexer::scanNumericLiteral(Token *tok)
             yyinp();
             if (_yychar == '-' || _yychar == '+') {
                 yyinp();
-                // ### assert(std::isdigit(_yychar));
+                // ### CPP_CHECK(std::isdigit(_yychar));
             }
         } else if (std::isalnum(_yychar) || _yychar == '.') {
             yyinp();

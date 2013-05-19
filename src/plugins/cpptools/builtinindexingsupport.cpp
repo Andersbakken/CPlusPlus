@@ -1,9 +1,17 @@
 #include "builtinindexingsupport.h"
 
 #include "cppmodelmanager.h"
+#include "cpppreprocessor.h"
 #include "searchsymbols.h"
+#include "cpptoolsconstants.h"
+#include "cppprojectfile.h"
+
+#include <coreplugin/icore.h>
+#include <coreplugin/progressmanager/progressmanager.h>
 
 #include <utils/runextensions.h>
+
+#include <QCoreApplication>
 
 using namespace CppTools;
 using namespace CppTools::Internal;
@@ -20,15 +28,9 @@ static void parse(QFutureInterface<void> &future,
     QStringList sources;
     QStringList headers;
 
-    const QStringList suffixes = (QStringList() << QLatin1String("c") << QLatin1String("C") << QLatin1String("cpp") <<
-                                  QLatin1String("cc") << QLatin1String("CC") << QLatin1String("m") << QLatin1String("mm"));
-
     foreach (const QString &file, files) {
-        QFileInfo info(file);
-
         preproc->removeFromCache(file);
-
-        if (suffixes.contains(info.suffix()))
+        if (ProjectFile::isSource(ProjectFile::classify(file)))
             sources.append(file);
         else
             headers.append(file);
@@ -126,6 +128,7 @@ public:
                         item.text = info.symbolName;
                         item.textMarkPos = -1;
                         item.textMarkLength = 0;
+                        item.icon = info.icon;
                         item.lineNumber = -1;
                         item.userData = qVariantFromValue(info);
                         resultItems << item;
@@ -185,6 +188,12 @@ QFuture<void> BuiltinIndexingSupport::refreshSourceFiles(const QStringList &sour
     }
 
     m_synchronizer.addFuture(result);
+
+    if (sourceFiles.count() > 1) {
+        Core::ICore::progressManager()->addTask(result,
+                                                QCoreApplication::translate("CppTools::Internal::BuiltinIndexingSupport", "Parsing"),
+                                                QLatin1String(CppTools::Constants::TASK_INDEX));
+    }
 
     return result;
 }

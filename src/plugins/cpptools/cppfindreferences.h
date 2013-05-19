@@ -30,7 +30,6 @@
 #ifndef CPPFINDREFERENCES_H
 #define CPPFINDREFERENCES_H
 
-#include <cplusplus/CppDocument.h>
 #include <cplusplus/DependencyTable.h>
 #include <cplusplus/FindUsages.h>
 
@@ -39,7 +38,6 @@
 #include <QPointer>
 #include <QFuture>
 #include <QFutureWatcher>
-#include <QMetaType>
 
 QT_FORWARD_DECLARE_CLASS(QTimer)
 
@@ -85,8 +83,8 @@ private Q_SLOTS:
     void searchFinished();
     void cancel();
     void setPaused(bool paused);
-    //void openEditor(const Find::SearchResultItem &item);
-    //void onReplaceButtonClicked(const QString &text, const QList<Find::SearchResultItem> &items, bool preserveCase);
+    void openEditor(const Find::SearchResultItem &item);
+    void onReplaceButtonClicked(const QString &text, const QList<Find::SearchResultItem> &items, bool preserveCase);
     void searchAgain();
 
 private:
@@ -94,10 +92,10 @@ private:
                     const QString &replacement, bool replace);
     void findMacroUses(const CPlusPlus::Macro &macro, const QString &replacement,
                        bool replace);
-    //void findAll_helper(Find::SearchResult *search);
+    void findAll_helper(Find::SearchResult *search);
     CPlusPlus::DependencyTable dependencyTable() const;
     void setDependencyTable(const CPlusPlus::DependencyTable &newTable);
-    //void createWatcher(const QFuture<CPlusPlus::Usage> &future, Find::SearchResult *search);
+    void createWatcher(const QFuture<CPlusPlus::Usage> &future, Find::SearchResult *search);
     bool findSymbol(CppFindReferencesParameters *parameters,
                     const CPlusPlus::Snapshot &snapshot);
 

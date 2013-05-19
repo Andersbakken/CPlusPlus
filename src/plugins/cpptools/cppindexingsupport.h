@@ -32,52 +32,11 @@
 
 #include "cpptools_global.h"
 
+#include <find/searchresultwindow.h>
+#include <find/textfindconstants.h>
+
 #include <QFuture>
 #include <QStringList>
-
-namespace Find
-{
-enum FindFlag {
-    FindBackward = 0x01,
-    FindCaseSensitively = 0x02,
-    FindWholeWords = 0x04,
-    FindRegularExpression = 0x08,
-    FindPreserveCase = 0x10
-};
-
-Q_DECLARE_FLAGS(FindFlags, FindFlag)
-
-struct CPPTOOLS_EXPORT SearchResultItem
-{
-    SearchResultItem()
-        : textMarkPos(-1),
-          textMarkLength(0),
-          lineNumber(-1),
-          useTextEditorFont(false)
-    {
-    }
-
-    SearchResultItem(const SearchResultItem &other)
-        : path(other.path),
-          text(other.text),
-          textMarkPos(other.textMarkPos),
-          textMarkLength(other.textMarkLength),
-          lineNumber(other.lineNumber),
-          useTextEditorFont(other.useTextEditorFont),
-         userData(other.userData)
-    {
-    }
-
-    QStringList path; // hierarchy to the parent item of this item
-    QString text; // text to show for the item itself
-    int textMarkPos; // 0-based starting position for a mark (-1 for no mark)
-    int textMarkLength; // length of the mark (0 for no mark)
-    int lineNumber; // (0 or -1 for no line number)
-    bool useTextEditorFont;
-    QVariant userData; // user data for identification of the item
-};
-
-}
 
 namespace CppTools {
 

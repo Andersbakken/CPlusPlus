@@ -131,6 +131,7 @@ private:
     QSharedPointer<Control> _control;
     TemplateNameIdTable _specializations;
     QMap<const TemplateNameId *, ClassOrNamespace *> _instantiations;
+    QHash<const AnonymousNameId *, ClassOrNamespace *> _anonymouses;
 
     QHash<Internal::FullyQualifiedName, Symbol *> *_scopeLookupCache;
 
@@ -155,7 +156,7 @@ private:
         bool isInstantiateNestedClassNeeded(const QList<Symbol *> &symbols) const;
         bool containsTemplateType(Declaration *declaration) const;
         bool containsTemplateType(Function *function) const;
-        NamedType *findMemberNamedType(Type *memberType) const;
+        NamedType *findNamedType(Type *memberType) const;
 
         QSet<ClassOrNamespace *> _alreadyConsideredNestedClassInstantiations;
         CreateBindings *_factory;
@@ -176,7 +177,7 @@ class CPLUSPLUS_EXPORT CreateBindings: protected SymbolVisitor
     Q_DISABLE_COPY(CreateBindings)
 
 public:
-    CreateBindings(Document::Ptr thisDocument, const Snapshot &snapshot, QSharedPointer<Control> control);
+    CreateBindings(Document::Ptr thisDocument, const Snapshot &snapshot);
     virtual ~CreateBindings();
 
     /// Returns the binding for the global namespace.
@@ -190,7 +191,8 @@ public:
 
     /// Returns the Control that must be used to create temporary symbols.
     /// \internal
-    QSharedPointer<Control> control() const;
+    QSharedPointer<Control> control() const
+    { return _control; }
 
     bool expandTemplates() const
     { return _expandTemplates; }
@@ -295,8 +297,6 @@ public:
     /// \internal
     void setBindings(QSharedPointer<CreateBindings> bindings);
 
-    QSharedPointer<Control> control() const; // ### deprecate
-
     static QList<const Name *> fullyQualifiedName(Symbol *symbol);
     static QList<const Name *> path(Symbol *symbol);
 
@@ -310,6 +310,8 @@ public:
     }
 
 private:
+    QList<LookupItem> lookupByUsing(const Name *name, Scope *scope) const;
+
     // The current expression.
     Document::Ptr _expressionDocument;
 
@@ -321,8 +323,6 @@ private:
 
     // Bindings
     mutable QSharedPointer<CreateBindings> _bindings;
-
-    QSharedPointer<Control> _control;
 
     bool m_expandTemplates;
 };

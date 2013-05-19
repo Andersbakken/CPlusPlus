@@ -29,7 +29,9 @@
 #include "NameVisitor.h"
 #include "Scope.h"
 #include "Templates.h"
-#include <cassert>
+
+#include "cppassert.h"
+
 
 using namespace CPlusPlus;
 
@@ -105,7 +107,7 @@ Symbol::Symbol(TranslationUnit *translationUnit, unsigned sourceLocation, const 
 
 Symbol::Symbol(Clone *clone, Subst *subst, Symbol *original)
     : _name(clone->name(original->_name, subst)),
-      _scope(original->_scope),
+      _scope(0),
       _next(0),
       _fileId(clone->control()->stringLiteral(original->fileName(), original->fileNameLength())),
       _sourceLocation(original->_sourceLocation),
@@ -233,7 +235,7 @@ Scope *Symbol::enclosingScope() const
 
 void Symbol::setScope(Scope *scope)
 {
-    assert(! _scope);
+    CPP_CHECK(! _scope);
     _scope = scope;
 }
 
@@ -294,6 +296,11 @@ Block *Symbol::enclosingBlock() const
             return block;
     }
     return 0;
+}
+
+Scope *Symbol::scope() const
+{
+    return _scope;
 }
 
 unsigned Symbol::index() const

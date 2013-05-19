@@ -101,6 +101,63 @@ public:
     }
 };
 typedef ScopedSwap<bool> ScopedBoolSwap;
+
+static bool same(const char *a, const char *b, int size)
+{
+    return strncmp(a, b, size) == 0;
+}
+
+static bool isQtReservedWord(const char *name, int size)
+{
+    if (size < 4)
+        return false;
+
+    const char c = name[0];
+    if (c == 'Q') {
+        if (name[1] == '_') {
+            name += 2;
+            size -= 2;
+            switch (size) {
+            case 1:
+                return name[2] == 'D' || name[2] == 'Q';
+            case 4:
+                return same(name, "SLOT", size) || same(name, "EMIT", size);
+            case 5:
+                return same(name, "SLOTS", size) || same(name, "ENUMS", size)
+                        || same(name, "FLAGS", size);
+            case 6:
+                return same(name, "SIGNAL", size);
+            case 7:
+                return same(name, "SIGNALS", size) || same(name, "FOREACH", size);
+            case 8:
+                return same(name, "PROPERTY", size);
+            case 9:
+                return same(name, "INVOKABLE", size);
+            case 10:
+                return same(name, "INTERFACES", size);
+            case 16:
+                return same(name, "PRIVATE_PROPERTY", size);
+            }
+        }
+        return false;
+    }
+
+    if (c == 'S')
+        return (size == 6 && same(name, "SIGNAL", size)) || (size == 4 && same(name, "SLOT", size));
+
+    if (c == 's')
+        return (size == 7 && same(name, "signals", size)) || (size == 5 && same(name, "slots", size));
+
+    if (c == 'f')
+        return size == 7 && same(name, "foreach", size);
+
+    if (c == 'e')
+        return size == 4 && same(name, "emit", size);
+
+    return false;
+}
+
+
 } // anonymous namespace
 
 namespace CPlusPlus {
@@ -556,13 +613,14 @@ Preprocessor::State::State()
     , m_offsetRef(0)
     , m_result(0)
     , m_lineRef(1)
-    , m_expansionStatus(NotExpanding)
+    , m_currentExpansion(0)
     , m_includeGuardState(IncludeGuardState_BeforeIfndef)
 {
     m_skipping[m_ifLevel] = false;
     m_trueTest[m_ifLevel] = false;
 
     m_expansionResult.reserve(256);
+    setExpansionStatus(NotExpanding);
 }
 
 #define COMPRESS_TOKEN_BUFFER
@@ -733,14 +791,12 @@ void Preprocessor::setKeepComments(bool keepComments)
 void Preprocessor::generateOutputLineMarker(unsigned lineno)
 {
     maybeStartOutputLine();
-    QByteArray marker;
-    marker.reserve(64);
+    QByteArray &marker = currentOutputBuffer();
     marker.append("# ");
     marker.append(QByteArray::number(lineno));
     marker.append(" \"");
     marker.append(m_env->currentFileUtf8);
     marker.append("\"\n");
-    writeOutput(marker);
 }
 
 void Preprocessor::handleDefined(PPToken *tk)
@@ -822,7 +878,7 @@ _Lclassify:
                 lex(tk);
             } while (isContinuationToken(*tk));
             goto _Lclassify;
-        } else if (tk->is(T_IDENTIFIER) && !isQtReservedWord(tk->asByteArrayRef())) {
+        } else if (tk->is(T_IDENTIFIER) && !isQtReservedWord(tk->tokenStart(), tk->length())) {
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_OtherToken);
             if (m_state.m_inCondition && tk->asByteArrayRef() == "defined") {
                 handleDefined(tk);
@@ -945,6 +1001,8 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
         bool hasMatchingArgs = false;
         if (hasArgs) {
             const int expectedArgCount = macro->formals().size();
+            if (macro->isVariadic() && allArgTks.size() == expectedArgCount - 1)
+                allArgTks.push_back(QVector<PPToken>());
             const int actualArgCount = allArgTks.size();
             if (expectedArgCount == actualArgCount
                     || (macro->isVariadic() && actualArgCount > expectedArgCount - 1)
@@ -1044,7 +1102,7 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
                 marker.lineno = idTk.lineno;
                 body.prepend(marker);
                 body.append(marker);
-                m_state.m_expansionStatus = ReadyForExpansion;
+                m_state.setExpansionStatus(ReadyForExpansion);
             } else if (oldMarkerTk.f.length
                        && (m_state.m_expansionStatus == ReadyForExpansion
                            || m_state.m_expansionStatus == Expanding)) {
@@ -1196,22 +1254,19 @@ void Preprocessor::trackExpansionCycles(PPToken *tk)
         //       ;
         if (tk->expanded() && !tk->hasSource()) {
             if (m_state.m_expansionStatus == ReadyForExpansion) {
-                m_state.m_expansionStatus = Expanding;
+                m_state.setExpansionStatus(Expanding);
                 m_state.m_expansionResult.clear();
                 m_state.m_expandedTokensInfo.clear();
             } else if (m_state.m_expansionStatus == Expanding) {
-                m_state.m_expansionStatus = JustFinishedExpansion;
+                m_state.setExpansionStatus(JustFinishedExpansion);
 
-                QByteArray *buffer = currentOutputBuffer();
-                if (!buffer)
-                    return;
-
+                QByteArray &buffer = currentOutputBuffer();
                 maybeStartOutputLine();
 
                 // Offset and length of the macro invocation
                 char chunk[40];
                 qsnprintf(chunk, sizeof(chunk), "# expansion begin %d,%d", tk->offset, tk->length());
-                buffer->append(chunk);
+                buffer.append(chunk);
 
                 // Expanded tokens
                 unsigned generatedCount = 0;
@@ -1220,23 +1275,23 @@ void Preprocessor::trackExpansionCycles(PPToken *tk)
                     if (p.first) {
                         if (generatedCount) {
                             qsnprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
-                            buffer->append(chunk);
+                            buffer.append(chunk);
                             generatedCount = 0;
                         }
                         qsnprintf(chunk, sizeof(chunk), " %d:%d", p.first, p.second);
-                        buffer->append(chunk);
+                        buffer.append(chunk);
                     } else {
                         ++generatedCount;
                     }
                 }
                 if (generatedCount) {
                     qsnprintf(chunk, sizeof(chunk), " ~%d", generatedCount);
-                    buffer->append(chunk);
+                    buffer.append(chunk);
                 }
-                buffer->append('\n');
-                buffer->append(m_state.m_expansionResult);
+                buffer.append('\n');
+                buffer.append(m_state.m_expansionResult);
                 maybeStartOutputLine();
-                buffer->append("# expansion end\n");
+                buffer.append("# expansion end\n");
             }
 
             lex(tk);
@@ -1264,13 +1319,13 @@ void Preprocessor::synchronizeOutputLines(const PPToken &tk, bool forceLine)
     if (forceLine || m_env->currentLine > tk.lineno || tk.lineno - m_env->currentLine >= 9) {
         if (m_state.m_noLines) {
             if (!m_state.m_markExpandedTokens)
-                writeOutput(' ');
+                currentOutputBuffer().append(' ');
         } else {
             generateOutputLineMarker(tk.lineno);
         }
     } else {
         for (unsigned i = m_env->currentLine; i < tk.lineno; ++i)
-            writeOutput('\n');
+            currentOutputBuffer().append('\n');
     }
 
     m_env->currentLine = tk.lineno;
@@ -1279,16 +1334,14 @@ void Preprocessor::synchronizeOutputLines(const PPToken &tk, bool forceLine)
 
 void Preprocessor::removeTrailingOutputLines()
 {
-    QByteArray *buffer = currentOutputBuffer();
-    if (buffer) {
-        int i = buffer->size() - 1;
-        while (i >= 0 && buffer->at(i) == '\n')
-            --i;
-        const int mightChop = buffer->size() - i - 1;
-        if (mightChop > 1) {
-            // Keep one new line at end.
-            buffer->chop(mightChop - 1);
-        }
+    QByteArray &buffer = currentOutputBuffer();
+    int i = buffer.size() - 1;
+    while (i >= 0 && buffer.at(i) == '\n')
+        --i;
+    const int mightChop = buffer.size() - i - 1;
+    if (mightChop > 1) {
+        // Keep one new line at end.
+        buffer.chop(mightChop - 1);
     }
 }
 
@@ -1311,23 +1364,20 @@ std::size_t Preprocessor::computeDistance(const Preprocessor::PPToken &tk, bool 
 void Preprocessor::enforceSpacing(const Preprocessor::PPToken &tk, bool forceSpacing)
 {
     if (tk.whitespace() || forceSpacing) {
+        QByteArray &buffer = currentOutputBuffer();
         // For expanded tokens we simply add a whitespace, if necessary - the exact amount of
         // whitespaces is irrelevant within an expansion section. For real tokens we must be
         // more specific and get the information from the original source.
         if (tk.expanded() && !atStartOfOutputLine()) {
-            writeOutput(' ');
+            buffer.append(' ');
         } else {
             const std::size_t spacing = computeDistance(tk, forceSpacing);
             const char *tokenBegin = tk.tokenStart();
             const char *it = tokenBegin - spacing;
 
             // Reproduce the content as in the original line.
-            for (; it != tokenBegin; ++it) {
-                if (pp_isspace(*it))
-                    writeOutput(*it);
-                else
-                    writeOutput(' ');
-            }
+            for (; it != tokenBegin; ++it)
+                buffer.append(pp_isspace(*it) ? *it : ' ');
         }
     }
 }
@@ -1351,6 +1401,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
     if (m_keepComments)
         m_state.m_lexer->setScanCommentTokens(true);
     m_state.m_result = result;
+    m_state.setExpansionStatus(m_state.m_expansionStatus); // Re-set m_currentExpansion
     m_state.m_noLines = noLines;
     m_state.m_markExpandedTokens = markGeneratedTokens;
     m_state.m_inCondition = inCondition;
@@ -1384,7 +1435,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
             }
             m_state.m_expandedTokensInfo.append(qMakePair(trackedLine, trackedColumn));
         } else if (m_state.m_expansionStatus == JustFinishedExpansion) {
-            m_state.m_expansionStatus = NotExpanding;
+            m_state.setExpansionStatus(NotExpanding);
             macroExpanded = true;
         }
 
@@ -1395,7 +1446,8 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
         enforceSpacing(tk, macroExpanded);
 
         // Finally output the token.
-        writeOutput(tk.asByteArrayRef());
+        currentOutputBuffer().append(tk.tokenStart(), tk.length());
+
     } while (tk.isNot(T_EOF_SYMBOL));
 
     removeTrailingOutputLines();
@@ -1676,7 +1728,7 @@ void Preprocessor::handleDefineDirective(PPToken *tk)
         lex(tk);
     }
 
-    if (isQtReservedWord(ByteArrayRef(&macroName))) {
+    if (isQtReservedWord(macroName.data(), macroName.size())) {
         QByteArray macroId = macro.name();
 
         if (macro.isFunctionLike()) {
@@ -1927,53 +1979,6 @@ void Preprocessor::handleUndefDirective(PPToken *tk)
 #endif // NO_DEBUG
 }
 
-bool Preprocessor::isQtReservedWord(const ByteArrayRef &macroId)
-{
-    const int size = macroId.size();
-    if      (size == 9 && macroId.at(0) == 'Q' && macroId == "Q_SIGNALS")
-        return true;
-    else if (size == 9 && macroId.at(0) == 'Q' && macroId == "Q_FOREACH")
-        return true;
-    else if (size == 7 && macroId.at(0) == 'Q' && macroId == "Q_SLOTS")
-        return true;
-    else if (size == 8 && macroId.at(0) == 'Q' && macroId == "Q_SIGNAL")
-        return true;
-    else if (size == 6 && macroId.at(0) == 'Q' && macroId == "Q_SLOT")
-        return true;
-    else if (size == 3 && macroId.at(0) == 'Q' && macroId == "Q_D")
-        return true;
-    else if (size == 3 && macroId.at(0) == 'Q' && macroId == "Q_Q")
-        return true;
-    else if (size == 10 && macroId.at(0) == 'Q' && macroId == "Q_PROPERTY")
-        return true;
-    else if (size == 18 && macroId.at(0) == 'Q' && macroId == "Q_PRIVATE_PROPERTY")
-        return true;
-    else if (size == 7 && macroId.at(0) == 'Q' && macroId == "Q_ENUMS")
-        return true;
-    else if (size == 7 && macroId.at(0) == 'Q' && macroId == "Q_FLAGS")
-        return true;
-    else if (size == 12 && macroId.at(0) == 'Q' && macroId == "Q_INTERFACES")
-        return true;
-    else if (size == 11 && macroId.at(0) == 'Q' && macroId == "Q_INVOKABLE")
-        return true;
-    else if (size == 6 && macroId.at(0) == 'S' && macroId == "SIGNAL")
-        return true;
-    else if (size == 4 && macroId.at(0) == 'S' && macroId == "SLOT")
-        return true;
-    else if (size == 7 && macroId.at(0) == 's' && macroId == "signals")
-        return true;
-    else if (size == 7 && macroId.at(0) == 'f' && macroId == "foreach")
-        return true;
-    else if (size == 5 && macroId.at(0) == 's' && macroId == "slots")
-        return true;
-    else if (size == 4 && macroId.at(0) == 'e' && macroId == "emit")
-        return true;
-    else if (size == 6 && macroId.at(0) == 'Q' && macroId == "Q_EMIT")
-        return true;
-    return false;
-}
-
-
 PPToken Preprocessor::generateToken(enum Kind kind,
                                     const char *content, int length,
                                     unsigned lineno,
@@ -2041,43 +2046,15 @@ void Preprocessor::startSkippingBlocks(const Preprocessor::PPToken &tk) const
     }
 }
 
-template <class T>
-void Preprocessor::writeOutput(const T &t)
-{
-    QByteArray *buffer = currentOutputBuffer();
-    if (buffer)
-        buffer->append(t);
-}
-
-void Preprocessor::writeOutput(const ByteArrayRef &ref)
-{
-    QByteArray *buffer = currentOutputBuffer();
-    if (buffer)
-        buffer->append(ref.start(), ref.length());
-}
-
 bool Preprocessor::atStartOfOutputLine() const
 {
-    const QByteArray *buffer = currentOutputBuffer();
-    return (buffer && !buffer->isEmpty()) ? *(buffer->end() - 1) == '\n' : true;
+    const QByteArray *buffer = m_state.m_currentExpansion;
+    return buffer->isEmpty() || buffer->endsWith('\n');
 }
 
 void Preprocessor::maybeStartOutputLine()
 {
-    QByteArray *buffer = currentOutputBuffer();
-    if (buffer && !buffer->isEmpty() && *(buffer->end() - 1) != '\n')
-        writeOutput('\n');
-}
-
-const QByteArray *Preprocessor::currentOutputBuffer() const
-{
-    if (m_state.m_expansionStatus == Expanding)
-        return &m_state.m_expansionResult;
-
-    return m_state.m_result;
-}
-
-QByteArray *Preprocessor::currentOutputBuffer()
-{
-    return const_cast<QByteArray *>(static_cast<const Preprocessor *>(this)->currentOutputBuffer());
+    QByteArray &buffer = currentOutputBuffer();
+    if (!buffer.isEmpty() && !buffer.endsWith('\n'))
+        buffer.append('\n');
 }

@@ -216,9 +216,6 @@ bool Parser::maybeSplitGreaterGreaterToken(int n)
     return _translationUnit->maybeSplitGreaterGreaterToken(_tokenIndex + n - 1);
 }
 
-bool Parser::blockErrors(bool block)
-{ return _translationUnit->blockErrors(block); }
-
 bool Parser::skipUntil(int token)
 {
     while (int tk = LA()) {
@@ -2005,6 +2002,12 @@ bool Parser::parseClassSpecifier(SpecifierListAST *&node)
 
     NameAST *name = 0;
     parseName(name);
+
+    if (! name && LA() == T_LBRACE && (LA(0) == T_CLASS || LA(0) == T_STRUCT || LA(0) == T_UNION || LA(0) == T_ENUM)) {
+        AnonymousNameAST *ast = new (_pool) AnonymousNameAST;
+        ast->class_token = classkey_token;
+        name = ast;
+    }
 
     bool parsed = false;
 
@@ -6440,10 +6443,11 @@ void Parser::rewind(unsigned cursor)
         fprintf(stderr, "! rewinding from token %d to token %d\n", _tokenIndex, cursor);
 #endif
 
-    if (cursor < _translationUnit->tokenCount())
+    const unsigned n = _translationUnit->tokenCount();
+    if (cursor < n)
         _tokenIndex = cursor;
     else
-        _tokenIndex = _translationUnit->tokenCount() - 1;
+        _tokenIndex = n - 1;
 }
 
 void Parser::warning(unsigned index, const char *format, ...)

@@ -108,15 +108,6 @@ void TranslationUnit::setSource(const char *source, unsigned size)
     _lastSourceChar = source + size;
 }
 
-unsigned TranslationUnit::tokenCount() const
-{ return _tokens->size(); }
-
-const Token &TranslationUnit::tokenAt(unsigned index) const
-{ return _tokens->at(index); }
-
-int TranslationUnit::tokenKind(unsigned index) const
-{ return _tokens->at(index).f.kind; }
-
 const char *TranslationUnit::spell(unsigned index) const
 {
     if (! index)
@@ -466,13 +457,6 @@ void TranslationUnit::getPosition(unsigned tokenOffset,
 
     if (fileName)
        *fileName = file;
-}
-
-bool TranslationUnit::blockErrors(bool block)
-{
-    bool previous = f._blockErrors;
-    f._blockErrors = block;
-    return previous;
 }
 
 void TranslationUnit::message(DiagnosticClient::Level level, unsigned index, const char *format, va_list args)
