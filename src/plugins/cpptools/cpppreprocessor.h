@@ -42,6 +42,8 @@ public:
     CppModelManager *modelManager() const
     { return m_modelManager.data(); }
 
+    void mergeEnvironment(CPlusPlus::Document::Ptr doc);
+
 protected:
     CPlusPlus::Document::Ptr switchDocument(CPlusPlus::Document::Ptr doc);
 
@@ -49,8 +51,6 @@ protected:
     bool checkFile(const QString &absoluteFilePath) const;
     QString resolveFile(const QString &fileName, IncludeType type);
     QString resolveFile_helper(const QString &fileName, IncludeType type);
-
-    void mergeEnvironment(CPlusPlus::Document::Ptr doc);
 
     virtual void macroAdded(const CPlusPlus::Macro &macro);
     virtual void passedMacroDefinitionCheck(unsigned offset, unsigned line,

@@ -135,6 +135,8 @@ public:
         return m_definedMacros;
     }
 
+    void removeFromSnapshot(const QString& fileName);
+
 Q_SIGNALS:
     void aboutToRemoveFiles(const QStringList &files);
 
