@@ -4,6 +4,7 @@
 #include <utils/hostosinfo.h>
 
 #include <QCoreApplication>
+#include <QTextCodec>
 
 using namespace CPlusPlus;
 using namespace CppTools;
@@ -158,7 +159,8 @@ void CppPreprocessor::getFileContents(const QString &absoluteFilePath,
 
     QFile file(absoluteFilePath);
     if (file.open(QFile::ReadOnly | QFile::Text)) {
-        QTextCodec *defaultCodec = Core::EditorManager::instance()->defaultTextCodec();
+        //QTextCodec *defaultCodec = Core::EditorManager::instance()->defaultTextCodec();
+        QTextCodec* defaultCodec = QTextCodec::codecForLocale();
         QTextStream stream(&file);
         stream.setCodec(defaultCodec);
         if (contents)

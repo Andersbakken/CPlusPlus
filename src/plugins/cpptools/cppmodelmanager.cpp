@@ -225,6 +225,7 @@ CppModelManager::CppModelManager(QObject *parent)
 
     m_dirty = true;
 
+    /*
     ProjectExplorer::ProjectExplorerPlugin *pe =
        ProjectExplorer::ProjectExplorerPlugin::instance();
 
@@ -242,16 +243,17 @@ CppModelManager::CppModelManager(QObject *parent)
 
     connect(Core::ICore::instance(), SIGNAL(coreAboutToClose()),
             this, SLOT(onCoreAboutToClose()));
+    */
 
     qRegisterMetaType<CPlusPlus::Document::Ptr>("CPlusPlus::Document::Ptr");
 
     // Listen for editor closed events so that we can keep track of changing files
-    connect(Core::ICore::editorManager(), SIGNAL(editorAboutToClose(Core::IEditor*)),
-        this, SLOT(editorAboutToClose(Core::IEditor*)));
+    //connect(Core::ICore::editorManager(), SIGNAL(editorAboutToClose(Core::IEditor*)),
+    //    this, SLOT(editorAboutToClose(Core::IEditor*)));
 
     m_completionFallback = new InternalCompletionAssistProvider;
     m_completionAssistProvider = m_completionFallback;
-    ExtensionSystem::PluginManager::addObject(m_completionAssistProvider);
+    //ExtensionSystem::PluginManager::addObject(m_completionAssistProvider);
     m_highlightingFallback = new CppHighlightingSupportInternalFactory;
     m_highlightingFactory = m_highlightingFallback;
     m_internalIndexingSupport = new BuiltinIndexingSupport;
