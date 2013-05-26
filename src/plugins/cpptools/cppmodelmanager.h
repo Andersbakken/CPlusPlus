@@ -196,8 +196,6 @@ private:
 
     CppCompletionAssistProvider *m_completionAssistProvider;
     CppCompletionAssistProvider *m_completionFallback;
-    CppHighlightingSupportFactory *m_highlightingFactory;
-    CppHighlightingSupportFactory *m_highlightingFallback;
     CppIndexingSupport *m_indexingSupporter;
     CppIndexingSupport *m_internalIndexingSupport;
 };

@@ -217,7 +217,6 @@ CppModelManager::CppModelManager(QObject *parent)
     : CppModelManagerInterface(parent)
     , m_enableGC(true)
     , m_completionAssistProvider(0)
-    , m_highlightingFactory(0)
     , m_indexingSupporter(0)
 {
     m_findReferences = new CppFindReferences(this);
@@ -254,16 +253,13 @@ CppModelManager::CppModelManager(QObject *parent)
     m_completionFallback = new InternalCompletionAssistProvider;
     m_completionAssistProvider = m_completionFallback;
     //ExtensionSystem::PluginManager::addObject(m_completionAssistProvider);
-    m_highlightingFallback = new CppHighlightingSupportInternalFactory;
-    m_highlightingFactory = m_highlightingFallback;
     m_internalIndexingSupport = new BuiltinIndexingSupport;
 }
 
 CppModelManager::~CppModelManager()
 {
-    ExtensionSystem::PluginManager::removeObject(m_completionAssistProvider);
+    //ExtensionSystem::PluginManager::removeObject(m_completionAssistProvider);
     delete m_completionFallback;
-    delete m_highlightingFallback;
     delete m_internalIndexingSupport;
 }
 
@@ -724,28 +720,21 @@ CppCompletionSupport *CppModelManager::completionSupport(Core::IEditor *editor) 
 
 void CppModelManager::setCppCompletionAssistProvider(CppCompletionAssistProvider *completionAssistProvider)
 {
-    ExtensionSystem::PluginManager::removeObject(m_completionAssistProvider);
+    //ExtensionSystem::PluginManager::removeObject(m_completionAssistProvider);
     if (completionAssistProvider)
         m_completionAssistProvider = completionAssistProvider;
     else
         m_completionAssistProvider = m_completionFallback;
-    ExtensionSystem::PluginManager::addObject(m_completionAssistProvider);
+    //ExtensionSystem::PluginManager::addObject(m_completionAssistProvider);
 }
 
 CppHighlightingSupport *CppModelManager::highlightingSupport(Core::IEditor *editor) const
 {
-    if (TextEditor::ITextEditor *textEditor = qobject_cast<TextEditor::ITextEditor *>(editor))
-        return m_highlightingFactory->highlightingSupport(textEditor);
-    else
-        return 0;
+    return 0;
 }
 
 void CppModelManager::setHighlightingSupportFactory(CppHighlightingSupportFactory *highlightingFactory)
 {
-    if (highlightingFactory)
-        m_highlightingFactory = highlightingFactory;
-    else
-        m_highlightingFactory = m_highlightingFallback;
 }
 
 void CppModelManager::setIndexingSupport(CppIndexingSupport *indexingSupport)
