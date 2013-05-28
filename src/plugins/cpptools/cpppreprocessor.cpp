@@ -180,6 +180,12 @@ bool CppPreprocessor::checkFile(const QString &absoluteFilePath) const
     return fileInfo.isFile() && fileInfo.isReadable();
 }
 
+static inline QString resolvePath(const QString& path)
+{
+    QFileInfo info(path);
+    return info.canonicalFilePath();
+}
+
 /// Resolve the given file name to its absolute path w.r.t. the include type.
 QString CppPreprocessor::resolveFile(const QString &fileName, IncludeType type)
 {
@@ -187,13 +193,13 @@ QString CppPreprocessor::resolveFile(const QString &fileName, IncludeType type)
         QHash<QString, QString>::ConstIterator it = m_fileNameCache.find(fileName);
         if (it != m_fileNameCache.end())
             return it.value();
-        const QString fn = resolveFile_helper(fileName, type);
+        const QString fn = resolvePath(resolveFile_helper(fileName, type));
         m_fileNameCache.insert(fileName, fn);
         return fn;
     }
 
     // IncludeLocal, IncludeNext
-    return resolveFile_helper(fileName, type);
+    return resolvePath(resolveFile_helper(fileName, type));
 }
 
 QString CppPreprocessor::cleanPath(const QString &path)
